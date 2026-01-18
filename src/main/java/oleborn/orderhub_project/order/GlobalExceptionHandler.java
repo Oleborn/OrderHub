@@ -11,7 +11,7 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Error> handleException(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ErrorDto> handleException(MethodArgumentNotValidException ex) {
 
         List<String> errors = ex.getBindingResult()
                 .getFieldErrors()
@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ":" + error.getDefaultMessage())
                 .toList();
 
-        return ResponseEntity.badRequest().body(new Error(ex.getStatusCode().value(), "Validation Failed", errors));
+        return ResponseEntity.badRequest().body(new ErrorDto(ex.getStatusCode().value(), "Validation Failed", errors));
 
     }
 

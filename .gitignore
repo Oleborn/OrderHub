@@ -36,3 +36,6 @@ mvnw.cmd
 .mvn/**
 .gitattributes
 
+.env
+src/main/resources/application-local.yaml
+

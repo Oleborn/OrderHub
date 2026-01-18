@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-tables
+      author: orderhub
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: create_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+
+        - sql:
+            sql: >
+              ALTER TABLE orders ADD CONSTRAINT check_status CHECK ( status IN ('CREATED', 'PAID', 'CANCELLED'))
+            dbms: postgresql

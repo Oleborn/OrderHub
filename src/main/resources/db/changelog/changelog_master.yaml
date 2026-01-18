@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: V1__initial_schema.sql
+      author: orderhub
+      sqlFile:
+          path: db/changelog/changes/V1__initial_schema.sql
+          relativeToChangeFile: true
+          splitStatements: true
+          endDelimiter: ;
+
+  - changeSet:
+      id: V2__add_order_number.sql
+      author: orderhub
+      sqlFile:
+          path: db/changelog/changes/V2__add_order_number.sql
+          relativeToChangeFile: true
+          splitStatements: true
+          endDelimiter: ;
+
+#  - property:
+#      name: now
+#      value: now()
+#      dbms: postgresql
+#
+#  - include:
+#      file: classpath:db/changelog/changes/18_01_26_01_initial_schema.yaml
