@@ -15,6 +15,15 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        generate_statistics: true
 
   liquibase:
     user: ${POSTGRES_USER}
@@ -27,4 +36,9 @@ server:
 
 logging:
   level:
-    org.hibernate.sql: DEBUG
+    oleborn.orderhub_project: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.springframework.jdbc.core.JdbcTemplate: DEBUG
+
+spring.jooq.sql-dialect: POSTGRES

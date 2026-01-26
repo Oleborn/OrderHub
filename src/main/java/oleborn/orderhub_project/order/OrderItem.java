@@ -4,13 +4,15 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "order_items")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
+@Setter
 public class OrderItem {
 
     @Id
@@ -28,4 +30,9 @@ public class OrderItem {
         this.quantity = quantity;
         this.price = price;
     }
+
+    //добавляем обратную связь для взаимодействия
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 }

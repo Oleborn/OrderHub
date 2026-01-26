@@ -5,17 +5,18 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.10-SNAPSHOT</version>
+		<version>3.5.10</version>
 		<relativePath/>
 	</parent>
 	<groupId>Oleborn</groupId>
 	<artifactId>OrderHub_Project</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<name>OrderHub_Project</name>
-	<description>OrderHub_Project</description>
+	<description>Проект эволюционирующий из монолита к production-ready микросервису</description>
 
 	<properties>
 		<java.version>21</java.version>
+		<jooq.version>3.19.0</jooq.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -50,6 +51,19 @@
 			<groupId>org.liquibase</groupId>
 			<artifactId>liquibase-core</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jooq</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jdbc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.jooq</groupId>
+			<artifactId>jooq-meta-extensions-liquibase</artifactId>
+			<version>${jooq.version}</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -78,27 +92,109 @@
 					</excludes>
 				</configuration>
 			</plugin>
+
+			<plugin>
+				<groupId>org.jooq</groupId>
+				<artifactId>jooq-codegen-maven</artifactId>
+				<version>${jooq.version}</version>
+
+				<!--
+                ЗАВИСИМОСТИ ДЛЯ ПЛАГИНА:
+                - Liquibase и драйвер БД нужны только во время генерации кода
+                - Отдельные версии для изоляции от основных зависимостей проекта
+                -->
+				<dependencies>
+					<dependency>
+						<groupId>org.liquibase</groupId>
+						<artifactId>liquibase-core</artifactId>
+						<version>4.31.1</version>
+					</dependency>
+					<dependency>
+						<groupId>org.postgresql</groupId>
+						<artifactId>postgresql</artifactId>
+						<version>42.6.0</version>
+					</dependency>
+				</dependencies>
+
+				<executions>
+					<execution>
+						<id>jooq-codegen</id>
+						<!--
+                        ФАЗА GENERATE-SOURCES:
+                        - Генерация выполняется до компиляции основного кода
+                        - Сгенерированные классы становятся доступны для использования
+                        -->
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+					</execution>
+				</executions>
+
+				<!--
+                КОНФИГУРАЦИЯ ГЕНЕРАТОРА JOOQ:
+                - Определяет источник метаданных, настройки генерации и целевой пакет
+                -->
+				<configuration>
+					<generator>
+						<!--
+                        НАСТРОЙКИ ИСТОЧНИКА МЕТАДАННЫХ БАЗЫ ДАННЫХ:
+                        - Используется LiquibaseDatabase вместо прямого подключения к БД
+                        - Генерация происходит на основе Liquibase changelog файлов
+                        -->
+						<database>
+							<name>org.jooq.meta.extensions.liquibase.LiquibaseDatabase</name>
+							<properties>
+								<!-- Путь к корневой директории ресурсов -->
+								<property>
+									<key>rootPath</key>
+									<value>src/main/resources</value>
+								</property>
+								<!-- Главный файл changelog Liquibase -->
+								<property>
+									<key>scripts</key>
+									<value>db/changelog/changelog_master.yaml</value>
+								</property>
+								<!--
+                                ИСКЛЮЧЕНИЕ ТАБЛИЦ LIQUIBASE:
+                                - Не генерировать классы для служебных таблиц Liquibase
+                                - Только пользовательские таблицы приложения
+                                -->
+								<property>
+									<key>includeLiquibaseTables</key>
+									<value>false</value>
+								</property>
+							</properties>
+						</database>
+
+						<!--
+                        НАСТРОЙКИ ГЕНЕРАЦИИ КОДА:
+                        - Определяют какие типы классов и с какими функциями будут созданы
+                        -->
+						<generate>
+							<!-- Использование java.time типов вместо java.sql -->
+							<javaTimeTypes>true</javaTimeTypes>
+							<!-- Генерация fluent-сеттеров (цепочечный вызов) -->
+							<fluentSetters>true</fluentSetters>
+							<!-- Генерация DAO классов для CRUD операций -->
+							<daos>true</daos>
+							<!-- Генерация POJO классов для данных -->
+							<pojos>true</pojos>
+						</generate>
+
+						<!--
+                        НАСТРОЙКИ ЦЕЛЕВОЙ ДИРЕКТОРИИ И ПАКЕТА:
+                        - Определяют где и в каком пакете будут созданы сгенерированные классы
+                        -->
+						<target>
+							<!-- Пакет для сгенерированных классов jOOQ -->
+							<packageName>oleborn.assistant_core.jooq</packageName>
+							<!-- Директория для сгенерированных источников -->
+							<directory>target/generated-sources/jooq</directory>
+						</target>
+					</generator>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
-	<repositories>
-		<repository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-		</repository>
-	</repositories>
-	<pluginRepositories>
-		<pluginRepository>
-			<id>spring-snapshots</id>
-			<name>Spring Snapshots</name>
-			<url>https://repo.spring.io/snapshot</url>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-		</pluginRepository>
-	</pluginRepositories>
-
 </project>
