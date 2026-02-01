@@ -19,11 +19,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        jdbc:
-          batch_size: 50
-        order_inserts: true
-        order_updates: true
-        generate_statistics: true
 
   liquibase:
     user: ${POSTGRES_USER}
@@ -31,14 +26,41 @@ spring:
     enabled: true
     change-log: classpath:/db/changelog/changelog_master.yaml
 
+
+management:
+  info:
+    env:
+      enabled: true
+    git:
+      mode: full
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - info
+          - prometheus
+          - loggers
+
+info:
+  app:
+    name: "Order_Hub"
+    version: "0.0.1"
+    description: "Учимся писать продакшен код"
+
 server:
   port: 8081
 
 logging:
   level:
-    oleborn.orderhub_project: DEBUG
     org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
-    org.springframework.jdbc.core.JdbcTemplate: DEBUG
+    root: info
 
 spring.jooq.sql-dialect: POSTGRES
+

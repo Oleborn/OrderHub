@@ -1,6 +1,7 @@
 package oleborn.orderhub_project.order;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import oleborn.orderhub_project.order.exception.NotFoundOrderException;
 import oleborn.orderhub_project.order.repository.OrderRepository;
 import org.springframework.stereotype.Service;
@@ -10,12 +11,15 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
 
     @Transactional
     public Order createOrder(CreateOrderRequest request) {
+
+        log.debug("В метод createOrder получен запрос: {}", request);
 
         List<OrderItem> items = request.items().stream()
                 .map(item -> new OrderItem(
@@ -28,14 +32,23 @@ public class OrderService {
 
         Order order = new Order(items);
 
+        log.debug("Все успешно сохранено");
+
         return orderRepository.save(order);
 
     }
 
     @Transactional(readOnly = true)
     public Order getOrderWithItems(Long id) {
-        return orderRepository.findWithItemsById(id).orElseThrow(
+
+        log.debug("В метод getOrderWithItems получен запрос поиска order по id: {}", id);
+
+        Order order = orderRepository.findWithItemsById(id).orElseThrow(
                 () -> new NotFoundOrderException("Order not found")
         );
+
+        log.debug("Результат успешно найден");
+
+        return order;
     }
 }
