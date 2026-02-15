@@ -1,25 +1,171 @@
-version: '3.8'
+# =============================================================================
+# DOCKER COMPOSE ДЛЯ ORDERHUB - ПОЛНЫЙ СТЕК
+# =============================================================================
+# Запуск: docker-compose --env-file .env up -d
+# Остановка: docker-compose down -v (удалит volumes)
+#
+# Компоненты:
+#   postgres     - база данных (хранит заказы)
+#   orderhub-app - само приложение Spring Boot
+#   prometheus   - сбор метрик (хранит 15 дней)
+#   grafana      - визуализация (дашборды)
+# =============================================================================
 
 services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL - Production-ready конфигурация
+  # ---------------------------------------------------------------------------
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: postgres_orderhub
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-
+      - "${POSTGRES_PORT}:5432"  # Проброс порта для внешних подключений (например, DBeaver)
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-orderhub}
-
+      # ВСЕ секреты берутся из .env файла, НЕ хардкодим!
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
+      - postgres_data:/var/lib/postgresql/data  # Персистентность данных БД
+    restart: unless-stopped  # Автоматический перезапуск при падении (production)
     command:
+      # Тюнинг PostgreSQL для лучшей производительности
       - "postgres"
       - "-c"
-      - "max_connections=100"
+      - "max_connections=100"      # Максимум подключений (не даём упасть от перегрузки)
+      - "-c"
+      - "shared_buffers=256MB"      # Кэш в памяти (ускоряет запросы)
+    networks:
+      - orderhub-network  # Изолированная сеть для сервисов
+    healthcheck:
+      # Проверка, что БД действительно готова принимать подключения
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s   # Проверять каждые 10 секунд
+      timeout: 5s     # Ждать ответа не больше 5 секунд
+      retries: 5      # 5 неудач = контейнер нездоров
 
+  # ---------------------------------------------------------------------------
+  # Spring Boot приложение
+  # ---------------------------------------------------------------------------
+  orderhub-app:
+    build:
+      context: .                    # Текущая директория
+      dockerfile: Dockerfile         # Используем наш multi-stage Dockerfile
+      args:
+        # Аргументы сборки (только метаинформация, НЕ секреты!)
+        APP_VERSION: ${APP_VERSION}  # Версия приложения для меток в образе
+        # ВНИМАНИЕ: Пароли НЕ передаём в ARGS! Они останутся в образе.
+    container_name: orderhub_app
+    ports:
+      - "${APP_PORT}:8081"           # Проброс порта наружу
+    environment:
+      # -----------------------------------------------------------------------
+      # Подключение к БД (runtime)
+      # -----------------------------------------------------------------------
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}  # Секрет!
+
+      # -----------------------------------------------------------------------
+      # Для миграций и прямых запросов (если нужно внутри приложения)
+      # -----------------------------------------------------------------------
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}           # Секрет!
+
+      # -----------------------------------------------------------------------
+      # JPA настройки
+      # -----------------------------------------------------------------------
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO}  # validate в production
+
+      # -----------------------------------------------------------------------
+      # Метрики и мониторинг (для Prometheus)
+      # -----------------------------------------------------------------------
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"  # Включаем экспорт в Prometheus
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
+
+      # -----------------------------------------------------------------------
+      # Логирование (опционально, для отладки)
+      # -----------------------------------------------------------------------
+      LOGGING_LEVEL_COM_ORDERHUB: DEBUG  # Детальные логи нашего кода
+
+    depends_on:
+      postgres:
+        condition: service_healthy  # Ждём, пока PostgreSQL полностью готов
+    restart: unless-stopped
+    healthcheck:
+      # Проверка, что Spring Boot жив и отвечает
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s      # Реже, чем у БД (Spring Boot тяжелее стартует)
+      timeout: 10s
+      retries: 3
+      start_period: 40s  # Даём время на запуск (первые 40с не проверяем)
+    networks:
+      - orderhub-network
+
+  # ---------------------------------------------------------------------------
+  # Prometheus - сбор метрик
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus_orderhub
+    volumes:
+      # Конфигурация Prometheus (скажем, куда ходить за метриками)
+      - ./src/main/resources/prometeus.yml:/etc/prometheus/prometheus.yml:ro
+      # Данные метрик (чтобы не терять историю при перезапуске)
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'  # Храним метрики 15 дней (production standard)
+    ports:
+      - '9090:9090'  # UI Prometheus (только для отладки)
+    depends_on:
+      orderhub-app:
+        condition: service_started  # Ждём, пока приложение запустится
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
+  # ---------------------------------------------------------------------------
+  # Grafana - визуализация дашбордов
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: grafana_orderhub
+    volumes:
+      - grafana_data:/var/lib/grafana  # Сохраняем дашборды и настройки
+    environment:
+      # Учётка для первого входа (обязательно поменять в production!)
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      # Дополнительные плагины (например, для круговых диаграмм)
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    ports:
+      - '3000:3000'  # UI Grafana
+    depends_on:
+      - prometheus  # Логически зависит, но технически может работать без него
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
+# -------------------------------------------------------------------------------
+# Persistent volumes - данные НЕ теряются при docker-compose down
+# -------------------------------------------------------------------------------
 volumes:
   postgres_data:
+    name: orderhub_postgres_data      # Явное имя для удобства
+  prometheus_data:
+    name: orderhub_prometheus_data
+  grafana_data:
+    name: orderhub_grafana_data
+
+# -------------------------------------------------------------------------------
+# Изолированная сеть для сервисов
+# -------------------------------------------------------------------------------
+networks:
+  orderhub-network:
+    name: orderhub-network
+    driver: bridge  # Стандартный драйвер для изоляции
