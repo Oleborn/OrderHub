@@ -1,0 +1,91 @@
+spring:
+  application:
+    name: order-service
+
+  profiles:
+    active: default
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    enabled: true
+    change-log: classpath:/db/changelog/changelog_master.yaml
+
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0   # в демо берём 100%, в production меньше (0.1, 0.01)
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+        descriptions: true
+
+  metrics:
+    distribution:
+      percentiles-histogram:
+        all: true
+      slo:
+        "[http.server.requests]": 50ms,100ms,200ms,500ms,1s,2s
+  info:
+    env:
+      enabled: true
+    git:
+      mode: full
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - info
+          - prometheus
+          - loggers
+
+info:
+  app:
+    name: "Order_Hub"
+    version: "0.0.1"
+    description: "Учимся писать продакшен код"
+
+server:
+  port: 8081
+
+logging:
+  pattern:
+    console: "%d{ISO8601} %-5level [%thread] %X{traceId} %X{spanId} %logger{36} - %msg%n"
+  level:
+    org.hibernate.SQL: DEBUG
+    root: info
+
+spring.jooq.sql-dialect: POSTGRES
+
+url:
+  notification-service: ${NOTIFICATION_SERVICE_URL}
+
