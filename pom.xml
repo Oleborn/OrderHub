@@ -1,245 +1,74 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.10</version>
-		<relativePath/>
-	</parent>
-	<groupId>Oleborn</groupId>
-	<artifactId>OrderHub_Project</artifactId>
-	<version>0.0.1</version>
-	<name>OrderHub_Project</name>
-	<description>Проект эволюционирующий из монолита к production-ready микросервису</description>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-	<properties>
-		<java.version>21</java.version>
-		<jooq.version>3.19.0</jooq.version>
-	</properties>
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-validation</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
+    <modelVersion>4.0.0</modelVersion>
 
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.liquibase</groupId>
-			<artifactId>liquibase-core</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-jooq</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jdbc</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.jooq</groupId>
-			<artifactId>jooq-meta-extensions-liquibase</artifactId>
-			<version>${jooq.version}</version>
-		</dependency>
+    <groupId>Oleborn</groupId>
+    <artifactId>OrderHub_Project</artifactId>
+    <version>0.0.1</version>
+    <name>OrderHub_Project</name>
+    <description>Проект эволюционирующий из монолита к production-ready микросервису</description>
+    <packaging>pom</packaging>
+
+    <!-- Централизованная версия Spring Boot -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.10</version>
+        <relativePath/>
+    </parent>
+
+    <properties>
+        <java.version>21</java.version>
+        <jooq.version>3.19.0</jooq.version>
+    </properties>
+
+    <modules>
+        <module>order-service</module>
+        <module>notification-service</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
-	<build>
-		<plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>build-info</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>5.0.0</version>
-                <executions>
-                    <execution>
-                        <id>get-git-info</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                    <generateGitPropertiesFilename>
-                        ${project.build.outputDirectory}/git.properties
-                    </generateGitPropertiesFilename>
-                    <includeOnlyProperties>
-                        <includeOnlyProperty>git.branch</includeOnlyProperty>
-                        <includeOnlyProperty>git.commit.id.abbrev</includeOnlyProperty>
-                        <includeOnlyProperty>git.commit.id.full</includeOnlyProperty>
-                        <includeOnlyProperty>git.commit.time</includeOnlyProperty>
-                        <includeOnlyProperty>git.commit.message.short</includeOnlyProperty>
-                    </includeOnlyProperties>
-                </configuration>
-            </plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</path>
-					</annotationProcessorPaths>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.jooq</groupId>
-				<artifactId>jooq-codegen-maven</artifactId>
-				<version>${jooq.version}</version>
-
-				<!--
-                ЗАВИСИМОСТИ ДЛЯ ПЛАГИНА:
-                - Liquibase и драйвер БД нужны только во время генерации кода
-                - Отдельные версии для изоляции от основных зависимостей проекта
-                -->
-				<dependencies>
-					<dependency>
-						<groupId>org.liquibase</groupId>
-						<artifactId>liquibase-core</artifactId>
-						<version>4.31.1</version>
-					</dependency>
-					<dependency>
-						<groupId>org.postgresql</groupId>
-						<artifactId>postgresql</artifactId>
-						<version>42.6.0</version>
-					</dependency>
-				</dependencies>
-
-				<executions>
-					<execution>
-						<id>jooq-codegen</id>
-						<!--
-                        ФАЗА GENERATE-SOURCES:
-                        - Генерация выполняется до компиляции основного кода
-                        - Сгенерированные классы становятся доступны для использования
-                        -->
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>generate</goal>
-						</goals>
-					</execution>
-				</executions>
-
-				<!--
-                КОНФИГУРАЦИЯ ГЕНЕРАТОРА JOOQ:
-                - Определяет источник метаданных, настройки генерации и целевой пакет
-                -->
-				<configuration>
-					<generator>
-						<!--
-                        НАСТРОЙКИ ИСТОЧНИКА МЕТАДАННЫХ БАЗЫ ДАННЫХ:
-                        - Используется LiquibaseDatabase вместо прямого подключения к БД
-                        - Генерация происходит на основе Liquibase changelog файлов
-                        -->
-						<database>
-							<name>org.jooq.meta.extensions.liquibase.LiquibaseDatabase</name>
-							<properties>
-								<!-- Путь к корневой директории ресурсов -->
-								<property>
-									<key>rootPath</key>
-									<value>src/main/resources</value>
-								</property>
-								<!-- Главный файл changelog Liquibase -->
-								<property>
-									<key>scripts</key>
-									<value>db/changelog/changelog_master.yaml</value>
-								</property>
-								<!--
-                                ИСКЛЮЧЕНИЕ ТАБЛИЦ LIQUIBASE:
-                                - Не генерировать классы для служебных таблиц Liquibase
-                                - Только пользовательские таблицы приложения
-                                -->
-								<property>
-									<key>includeLiquibaseTables</key>
-									<value>false</value>
-								</property>
-							</properties>
-						</database>
-
-						<!--
-                        НАСТРОЙКИ ГЕНЕРАЦИИ КОДА:
-                        - Определяют какие типы классов и с какими функциями будут созданы
-                        -->
-						<generate>
-							<!-- Использование java.time типов вместо java.sql -->
-							<javaTimeTypes>true</javaTimeTypes>
-							<!-- Генерация fluent-сеттеров (цепочечный вызов) -->
-							<fluentSetters>true</fluentSetters>
-							<!-- Генерация DAO классов для CRUD операций -->
-							<daos>true</daos>
-							<!-- Генерация POJO классов для данных -->
-							<pojos>true</pojos>
-						</generate>
-
-						<!--
-                        НАСТРОЙКИ ЦЕЛЕВОЙ ДИРЕКТОРИИ И ПАКЕТА:
-                        - Определяют где и в каком пакете будут созданы сгенерированные классы
-                        -->
-						<target>
-							<!-- Пакет для сгенерированных классов jOOQ -->
-							<packageName>oleborn.assistant_core.jooq</packageName>
-							<!-- Директория для сгенерированных источников -->
-							<directory>target/generated-sources/jooq</directory>
-						</target>
-					</generator>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
 </project>

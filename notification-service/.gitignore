@@ -14,6 +14,7 @@ target/
 .sts4-cache
 
 ### IntelliJ IDEA ###
+.idea
 *.iws
 *.iml
 *.ipr
@@ -35,7 +36,5 @@ mvnw.cmd
 .mvn/**
 .gitattributes
 
-.env
-.idea/*
+../.env
 src/main/resources/application-local.yaml
-
