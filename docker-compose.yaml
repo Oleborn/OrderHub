@@ -47,18 +47,21 @@ services:
   # ---------------------------------------------------------------------------
   # Spring Boot приложение
   # ---------------------------------------------------------------------------
-  orderhub-app:
+  order-service:
     build:
-      context: .                    # Текущая директория
-      dockerfile: Dockerfile         # Используем наш multi-stage Dockerfile
+      context: .       # Текущая директория
+      dockerfile: order-service/Dockerfile         # Используем наш multi-stage Dockerfile
       args:
         # Аргументы сборки (только метаинформация, НЕ секреты!)
-        APP_VERSION: ${APP_VERSION}  # Версия приложения для меток в образе
+        APP_VERSION: ${APP_VERSION:-1.0.0}  # Версия приложения для меток в образе
         # ВНИМАНИЕ: Пароли НЕ передаём в ARGS! Они останутся в образе.
-    container_name: orderhub_app
+    container_name: order_service
     ports:
-      - "${APP_PORT}:8081"           # Проброс порта наружу
+      - "${ORDER_SERVICE_PORT:-8081}:8081"           # Проброс порта наружу
     environment:
+      # Сервер
+      SERVER_PORT: 8081
+
       # -----------------------------------------------------------------------
       # Подключение к БД (runtime)
       # -----------------------------------------------------------------------
@@ -84,12 +87,23 @@ services:
       # Метрики и мониторинг (для Prometheus)
       # -----------------------------------------------------------------------
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"  # Включаем экспорт в Prometheus
-      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics,loggers
 
       # -----------------------------------------------------------------------
       # Логирование (опционально, для отладки)
       # -----------------------------------------------------------------------
       LOGGING_LEVEL_COM_ORDERHUB: DEBUG  # Детальные логи нашего кода
+
+      # Трассировка OpenTelemetry
+      MANAGEMENT_TRACING_ENABLED: "true"
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+
+      # Логирование с traceId
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %msg%n"
+      LOGGING_LEVEL_OLEBORN_ORDERHUB: DEBUG
+
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL}
 
     depends_on:
       postgres:
@@ -106,6 +120,47 @@ services:
       - orderhub-network
 
   # ---------------------------------------------------------------------------
+  # Notification Service - сервис уведомлений
+  # ---------------------------------------------------------------------------
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-1.0.0}
+    container_name: notification_service
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT:-8082}:8082"
+    environment:
+      # Сервер
+      SERVER_PORT: 8082
+
+      # Метрики для Prometheus (опционально)
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
+
+      # Трассировка OpenTelemetry
+      MANAGEMENT_TRACING_ENABLED: "true"
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+
+      # Логирование с traceId
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %msg%n"
+      LOGGING_LEVEL_OLEBORN_ORDERHUB: DEBUG
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy  # Ждём, пока PostgreSQL полностью готов
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - orderhub-network
+
+  # ---------------------------------------------------------------------------
   # Prometheus - сбор метрик
   # ---------------------------------------------------------------------------
   prometheus:
@@ -113,7 +168,7 @@ services:
     container_name: prometheus_orderhub
     volumes:
       # Конфигурация Prometheus (скажем, куда ходить за метриками)
-      - ./src/main/resources/prometeus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./order-service/src/main/resources/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       # Данные метрик (чтобы не терять историю при перезапуске)
       - prometheus_data:/prometheus
     command:
@@ -122,9 +177,6 @@ services:
       - '--storage.tsdb.retention.time=15d'  # Храним метрики 15 дней (production standard)
     ports:
       - '9090:9090'  # UI Prometheus (только для отладки)
-    depends_on:
-      orderhub-app:
-        condition: service_started  # Ждём, пока приложение запустится
     restart: unless-stopped
     networks:
       - orderhub-network
@@ -151,6 +203,24 @@ services:
     networks:
       - orderhub-network
 
+  # ---------------------------------------------------------------------------
+  # Jaeger - распределённая трассировка
+  # ---------------------------------------------------------------------------
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: jaeger
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      # Храним трассы в памяти (для демо), в production нужен persistent storage
+      SPAN_STORAGE_TYPE: memory
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
 # -------------------------------------------------------------------------------
 # Persistent volumes - данные НЕ теряются при docker-compose down
 # -------------------------------------------------------------------------------
@@ -161,6 +231,8 @@ volumes:
     name: orderhub_prometheus_data
   grafana_data:
     name: orderhub_grafana_data
+  jaeger_data:
+    name: orderhub_jaeger_data
 
 # -------------------------------------------------------------------------------
 # Изолированная сеть для сервисов

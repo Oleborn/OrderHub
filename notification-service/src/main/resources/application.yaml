@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: notification-service
+
+server:
+  port: 8082
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0   # в демо берём 100%, в production меньше (0.1, 0.01)
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+
+logging:
+  pattern:
+    console: "%d{ISO8601} %-5level [%thread] %X{traceId} %X{spanId} %logger{36} - %msg%n"
