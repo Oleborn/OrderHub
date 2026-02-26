@@ -1,4 +1,4 @@
-# Prometheus Ultimate Deep Dive: Фундаментальное руководство по наблюдаемости
+# Prometheus
 
 **Автор:** Oleborn
 **Дата:** 14 февраля 2026 г.  
@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Введение: Prometheus как краеугольный камень наблюдаемости
+## 1. Введение
 
 В эпоху распределенных систем и микросервисов, понимание состояния приложения в реальном времени становится критически важным. Prometheus, изначально разработанный в SoundCloud, а затем ставший частью Cloud Native Computing Foundation (CNCF), зарекомендовал себя как де-факто стандарт для мониторинга и алертинга. Это не просто инструмент, а целая философия, позволяющая инженерам задавать сложные вопросы о поведении системы и получать на них ответы.
 
@@ -344,15 +344,3 @@ Prometheus хранит данные локально, что ограничив
 *   **Глобальный вид:** Объединение данных со множества Prometheus-серверов в единое представление.
 *   **Высокая доступность:** Репликация и отказоустойчивость.
 *   **Дедупликация:** Удаление дубликатов метрик при использовании нескольких Prometheus-серверов.
-
----
-
-## 9. Ссылки для дальнейшего изучения
-
-*   [Официальная документация Prometheus](https://prometheus.io/docs/)
-*   [PromQL Cheat Sheet](https://promlabs.com/promql-cheat-sheet/)
-*   [Prometheus: Up & Running](https://www.oreilly.com/library/view/prometheus-up-running/9781492034130/)
-*   [Thanos Project](https://thanos.io/)
-*   [Cortex Project](https://cortexmetrics.io/)
-*   [VictoriaMetrics](https://victoriametrics.com/)
-*   [Micrometer Deep Dive (наше руководство)](/home/ubuntu/MICROMETER_DEEP_DIVE.md)
