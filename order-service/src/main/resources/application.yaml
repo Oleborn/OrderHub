@@ -3,7 +3,7 @@ spring:
     name: order-service
 
   profiles:
-    active: default
+    active: elk
 
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
@@ -13,8 +13,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: true
+      ddl-auto: validate
+    show-sql: false
     open-in-view: false
     properties:
       hibernate:
@@ -32,6 +32,8 @@ management:
     enabled: true
     sampling:
       probability: 1.0   # в демо берём 100%, в production меньше (0.1, 0.01)
+    propagation:
+      type: w3c
   otlp:
     tracing:
       endpoint: http://jaeger:4318/v1/traces
@@ -78,8 +80,6 @@ server:
   port: 8081
 
 logging:
-  pattern:
-    console: "%d{ISO8601} %-5level [%thread] %X{traceId} %X{spanId} %logger{36} - %msg%n"
   level:
     org.hibernate.SQL: DEBUG
     root: info

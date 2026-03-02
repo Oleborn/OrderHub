@@ -59,6 +59,10 @@ services:
     ports:
       - "${ORDER_SERVICE_PORT:-8081}:8081"           # Проброс порта наружу
     environment:
+
+      SPRING_PROFILES_ACTIVE: elk
+      ENVIRONMENT: production
+
       # Сервер
       SERVER_PORT: 8081
 
@@ -100,8 +104,8 @@ services:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
 
       # Логирование с traceId
-      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %msg%n"
-      LOGGING_LEVEL_OLEBORN_ORDERHUB: DEBUG
+#      LOGGING_PATTERN_CONSOLE: "d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [traceId=%X{traceId:-}, spanId=%X{spanId:-}] %msg%n"
+#      LOGGING_LEVEL_OLEBORN_ORDERHUB: DEBUG
 
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL}
 
@@ -145,8 +149,12 @@ services:
       MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
 
       # Логирование с traceId
-      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %msg%n"
-      LOGGING_LEVEL_OLEBORN_ORDERHUB: DEBUG
+#      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %msg%n"
+#      LOGGING_LEVEL_OLEBORN_ORDERHUB: DEBUG
+
+      SPRING_PROFILES_ACTIVE: elk
+      ENVIRONMENT: production
+
     restart: unless-stopped
     depends_on:
       postgres:
@@ -221,6 +229,112 @@ services:
     networks:
       - orderhub-network
 
+  # =============================================================================
+  # ELK СТЕК - структурированное логирование
+  # =============================================================================
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: elasticsearch_orderhub
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+      - xpack.monitoring.collection.enabled=true
+      - "cluster.name=orderhub-elk"
+    ports:
+      - "${ELASTICSEARCH_PORT}:9200"  # HTTP API
+      - "9300:9300"  # Transport protocol
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Elasticsearch Exporter для мониторинга в Prometheus
+  elasticsearch-exporter:
+    image: prometheuscommunity/elasticsearch-exporter:latest
+    container_name: elasticsearch_exporter_orderhub
+    command:
+      - '--es.uri=http://elasticsearch:9200'
+      - '--es.all'                 # Собирать метрики со всех нод
+      - '--es.indices'             # Собирать метрики по индексам
+      - '--es.indices_settings'    # Собирать настройки индексов
+      - '--es.shards'              # Собирать метрики по шардам
+    ports:
+      - "9114:9114"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
+  logstash:
+    image: logstash:8.11.0
+    container_name: logstash_orderhub
+    ports:
+      - "${LOGSTASH_PORT}:5000"   # TCP input для логов
+      - "9600:9600"               # Monitoring API
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    environment:
+      LS_JAVA_OPTS: "-Xms256m -Xmx256m"
+      # Параметры подключения к Elasticsearch
+      ELASTICSEARCH_HOSTS: "http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
+  kibana:
+    image: kibana:8.11.0
+    container_name: kibana_orderhub
+    ports:
+      - "${KIBANA_PORT}:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: "http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"
+      # Локализация
+      I18N_LOCALE: ru
+      # Настройки по умолчанию
+      KIBANA_DEFAULT_APP_ID: discover
+      SERVER_NAME: kibana_orderhub
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
+  # Опционально: Filebeat для сбора логов из файлов (альтернатива TCP)
+  filebeat:
+    image: elastic/filebeat:8.11.0
+    container_name: filebeat_orderhub
+    user: root
+    volumes:
+      # Конфигурация Filebeat
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      # Docker socket для чтения логов контейнеров
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Логи Docker
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: ["--strict.perms=false"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
 # -------------------------------------------------------------------------------
 # Persistent volumes - данные НЕ теряются при docker-compose down
 # -------------------------------------------------------------------------------
@@ -233,6 +347,8 @@ volumes:
     name: orderhub_grafana_data
   jaeger_data:
     name: orderhub_jaeger_data
+  elasticsearch_data:
+    name: orderhub_elasticsearch_data
 
 # -------------------------------------------------------------------------------
 # Изолированная сеть для сервисов
