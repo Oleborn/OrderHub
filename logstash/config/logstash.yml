@@ -139,7 +139,7 @@ xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
 # -------------------------------------------------------------------------
 # dead_letter_queue.enable: false
 # dead_letter_queue.max_bytes: 1024mb
-# ⚠️ Работает только для некоторых output-плагинов (например, elasticsearch).
+# Работает только для некоторых output-плагинов (например, elasticsearch).
 
 # -------------------------------------------------------------------------
 # LOGGING - ЛОГИРОВАНИЕ САМОГО LOGSTASH
@@ -148,7 +148,7 @@ xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
 # log.level: info
 # log.format: json                     # логи в JSON (для сбора Filebeat)
 # 
-# ❌ Параметр logging.format (или logging.json) устарел. Правильный ключ: log.format.
+# Параметр logging.format (или logging.json) устарел. Правильный ключ: log.format.
 # 
 # Пример:
 # log.level: info

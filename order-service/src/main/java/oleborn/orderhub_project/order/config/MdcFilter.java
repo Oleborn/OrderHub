@@ -1,6 +1,5 @@
 package oleborn.orderhub_project.order.config;
 
-import io.opentelemetry.api.trace.Span;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
