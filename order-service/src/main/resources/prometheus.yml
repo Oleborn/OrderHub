@@ -23,7 +23,7 @@ global:
 # -----------------------------------------------------------------------------
 scrape_configs:
   # Одна задача (job) — одно логическое приложение/сервис
-  - job_name: 'orderhub-app'
+  - job_name: 'order-service'
     
     # Путь, по которому Prometheus будет забирать метрики
     # Spring Boot Actuator отдаёт метрики в формате Prometheus по этому адресу
@@ -34,15 +34,30 @@ scrape_configs:
     # -------------------------------------------------------------------------
     static_configs:
       # Список таргетов (инстансов приложения) для этого job
-      - targets: ['orderhub-app:8081']
+      - targets: ['order-service:8081']
         # Метки (labels), которые будут добавлены ко ВСЕМ метрикам из этого job
         # Это позволяет фильтровать метрики в PromQL по application/environment
         labels:
-          application: 'orderhub-app'   # Имя приложения (для фильтрации)
+          application: 'order-service'   # Имя приложения (для фильтрации)
           environment: 'production'      # Окружение (prod/staging/dev)
         
         # Если бы было несколько инстансов:
         # targets: 
-        #   - 'orderhub-app-1:8081'
-        #   - 'orderhub-app-2:8081'
+        #   - 'order-service-1:8081'
+        #   - 'order-service-2:8081'
         # Тогда метрики можно агрегировать: sum by(application) (rate(...))
+
+  - job_name: 'notification-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'notification-service:8082' ]
+        labels:
+          application: 'notification-service'
+          environment: 'production'
+
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: [ 'elasticsearch-exporter:9114' ]
+        labels:
+          service: 'elasticsearch'
+          stack: 'elk'

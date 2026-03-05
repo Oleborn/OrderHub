@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import oleborn.orderhub_project.order.OrderStatus;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,5 +43,19 @@ public class Order {
 
         // Устанавливаем обратную ссылку для каждого OrderItem
         items.forEach(item -> item.setOrder(this));
+    }
+
+    //метод расчета суммы заказа
+    public BigDecimal calculateTotalAmount() {
+        if (items == null || items.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        return items.stream()
+                .map(
+                        item -> item.getPrice()
+                                .multiply(BigDecimal.valueOf(item.getQuantity()))
+                )
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
