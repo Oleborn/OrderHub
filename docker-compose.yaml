@@ -349,6 +349,8 @@ volumes:
     name: orderhub_jaeger_data
   elasticsearch_data:
     name: orderhub_elasticsearch_data
+  filebeat_data:
+    name: orderhub_filebeat_data
 
 # -------------------------------------------------------------------------------
 # Изолированная сеть для сервисов

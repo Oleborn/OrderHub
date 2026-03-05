@@ -31,7 +31,7 @@ public class NotificationController {
         }
 
         if (random > 90) {
-            log.info("Сервис замедлился");
+            log.info("Сервис notification service замедлился");
             Thread.sleep(600);
         }
 

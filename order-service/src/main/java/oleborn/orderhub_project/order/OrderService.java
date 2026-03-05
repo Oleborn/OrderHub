@@ -50,6 +50,7 @@ public class OrderService {
         }
 
         if (random > 70) {
+            log.info("Сервис OrderService замедлился");
             Thread.sleep(200);
         }
 

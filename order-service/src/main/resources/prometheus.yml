@@ -47,6 +47,14 @@ scrape_configs:
         #   - 'order-service-2:8081'
         # Тогда метрики можно агрегировать: sum by(application) (rate(...))
 
+  - job_name: 'notification-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'notification-service:8082' ]
+        labels:
+          application: 'notification-service'
+          environment: 'production'
+
   - job_name: 'elasticsearch'
     static_configs:
       - targets: [ 'elasticsearch-exporter:9114' ]
