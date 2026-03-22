@@ -3,7 +3,7 @@ spring:
     name: order-service
 
   profiles:
-    active: default
+    active: elk
 
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
@@ -70,7 +70,7 @@ management:
 
 info:
   app:
-    name: "Order_Hub"
+    name: "order-service"
     version: "0.0.1"
     description: "Учимся писать продакшен код"
 
@@ -78,8 +78,6 @@ server:
   port: 8081
 
 logging:
-  pattern:
-    console: "%d{ISO8601} %-5level [%thread] %X{traceId} %X{spanId} %logger{36} - %msg%n"
   level:
     org.hibernate.SQL: DEBUG
     root: info
@@ -88,4 +86,49 @@ spring.jooq.sql-dialect: POSTGRES
 
 url:
   notification-service: ${NOTIFICATION_SERVICE_URL}
+  payment-service: ${PAYMENT_SERVICE_URL}
+
+resilience4j:
+  retry:
+    retryAspectOrder: 2
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 200ms
+        exponentialBackoffMultiplier: 2.0
+        exponentialMaxWaitDuration: 10s
+        randomizedWaitFactor: 0.3
+        retryExceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - oleborn.order_service.order.exception.PaymentFailedException
+        ignoreExceptions:
+          - java.lang.IllegalArgumentException
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+        failAfterMaxAttempts: true
+    instances:
+      paymentService:
+        baseConfig: default
+        maxAttempts: 4
+  circuitbreaker:
+    circuitBreakerAspectOrder: 1
+    configs:
+      default: # базовая конфигурация для всех экземпляров
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 20
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+    instances:
+      paymentService:
+        baseConfig: default            # наследуем всё из default
+        slidingWindowSize: 10          # переопределяем только размер окна
+        failureRateThreshold: 40        # и порог ошибок
+        minimumNumberOfCalls: 10        # после какого количества начинаем
+        recordExceptions:
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - oleborn.order_service.order.exception.PaymentFailedException
+        ignoreExceptions:
+          - java.lang.IllegalArgumentException
+
 

@@ -1,18 +1,18 @@
 spring:
   application:
-    name: notification-service
+    name: payment-service
 
   profiles:
     active: elk
 
 server:
-  port: 8082
+  port: 8083
 
 management:
   tracing:
     enabled: true
     sampling:
-      probability: 1.0   # в демо берём 100%, в production меньше (0.1, 0.01)
+      probability: 1.0
   otlp:
     tracing:
       endpoint: http://jaeger:4318/v1/traces
@@ -25,4 +25,3 @@ management:
           - info
           - prometheus
           - loggers
-

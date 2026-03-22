@@ -1,0 +1,38 @@
+filebeat.inputs:
+  - type: container
+
+    enabled: true
+    paths:
+      - /var/lib/docker/containers/*/*.log
+
+processors:
+
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+
+  - drop_event:
+      when:
+        not:
+          or:
+            - equals:
+                container.name: "order_service"
+            - equals:
+                container.name: "notification_service"
+            - equals:
+                container.name: "payment-service"
+
+  - decode_json_fields:
+      fields: ["message"]
+      target: ""
+      overwrite_keys: true
+      add_error_key: true
+
+      when:
+        regexp:
+          message: '^\s*\{'
+
+  - drop_fields:
+      fields: ["stream", "attrs"]
+
+output.logstash:
+  hosts: ["logstash:5000"]
