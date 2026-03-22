@@ -40,9 +40,9 @@ public class PaymentService {
 
             // Максимальное количество попыток (включая первую)
             maxAttempts = 3,
-
-            // SpEL-выражение для динамического задания maxAttempts (например, из property)
-            maxAttemptsExpression = "#{${retry.max-attempts}}",
+//
+//            // SpEL-выражение для динамического задания maxAttempts (например, из property)
+//            maxAttemptsExpression = "#{${retry.max-attempts}}",
 
             // Настройка задержки между попытками
             backoff = @Backoff(
@@ -50,28 +50,28 @@ public class PaymentService {
                     maxDelay = 5000,       // максимальная задержка (ограничитель)
                     multiplier = 2.0,      // множитель для экспоненциального роста
                     random = true          // jitter — случайное отклонение
-            ),
-
-            // SpEL-выражение для тонкой фильтрации исключений (доступен #root)
-            exceptionExpression = "#{@exceptionChecker.shouldRetry(#root)}",
-
-            // Сохранять состояние между попытками (нужно для circuit breaker)
-            stateful = false,
-
-            // Метка для мониторинга и логирования
-            label = "",
-
-            // Имена Spring-бинов, реализующих RetryListener
-            listeners = {""},
-
-            // Имя метода fallback, вызываемого после исчерпания попыток
-            recover = "",
-
-            // Исключения, при которых fallback НЕ вызывается
-            notRecoverable = {},
-
-            // interceptor — имя бина MethodInterceptor для кастомной логики (редко используется)
-            interceptor = ""
+            )
+//
+//            // SpEL-выражение для тонкой фильтрации исключений (доступен #root)
+//            exceptionExpression = "#{@exceptionChecker.shouldRetry(#root)}",
+//
+//            // Сохранять состояние между попытками (нужно для circuit breaker)
+//            stateful = false,
+//
+//            // Метка для мониторинга и логирования
+//            label = "",
+//
+//            // Имена Spring-бинов, реализующих RetryListener
+//            listeners = {""},
+//
+//            // Имя метода fallback, вызываемого после исчерпания попыток
+//            recover = "",
+//
+//            // Исключения, при которых fallback НЕ вызывается
+//            notRecoverable = {},
+//
+//            // interceptor — имя бина MethodInterceptor для кастомной логики (редко используется)
+//            interceptor = ""
     )
 
 //    @CircuitBreaker(
@@ -141,8 +141,6 @@ public class PaymentService {
     @Recover
     public PaymentResponseDto fallbackProcessPayment(Order savedOrder, Throwable t) {
         log.warn("Резервный вариант логики для заказа: {}, после срабатывания circuit breaker: {}",savedOrder.getId(), t.getMessage());
-
-        log.warn("FALLBACK: получил исключение: {}", t.getClass().getName());
 
         throw new PaymentFailedException("Payment сервис временно недоступен: " + t.getMessage());
     }

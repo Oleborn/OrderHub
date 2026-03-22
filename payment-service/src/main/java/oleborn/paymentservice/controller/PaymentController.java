@@ -29,7 +29,7 @@ public class PaymentController {
 
             int randomRequest = random.nextInt(100);
 
-            // Имитация ошибок (1я демонстрация)
+            // Имитация ошибки
             if (randomRequest < 80) {
 
                 log.error("Симуляция ошибки оплаты заказа id: {}", request.orderId());
@@ -40,14 +40,6 @@ public class PaymentController {
                                 new PaymentResponseDto(false, "Сервис оплаты недоступен")
                         );
             }
-
-//            // Имитация случайной задержки (2я демонстрация)
-//            if (randomRequest < 70) {
-//
-//                Thread.sleep(5000);
-//
-//                log.info("Симуляция медленного ответа для заказа id: {}", request.orderId());
-//            }
 
         }
         return ResponseEntity.ok(new PaymentResponseDto(true, "Оплата проведена"));
