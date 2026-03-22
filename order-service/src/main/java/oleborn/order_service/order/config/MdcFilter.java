@@ -17,14 +17,21 @@ import java.io.IOException;
 public class MdcFilter extends OncePerRequestFilter {
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
         try {
+            // Технический контекст
             MDC.put("method", request.getMethod());
             MDC.put("path", request.getRequestURI());
             MDC.put("client_ip", request.getRemoteAddr());
 
             filterChain.doFilter(request, response);
         } finally {
+            // КРИТИЧНО: очищаем весь MDC, чтобы контекст не утёк в другой запрос
             MDC.clear();
         }
     }

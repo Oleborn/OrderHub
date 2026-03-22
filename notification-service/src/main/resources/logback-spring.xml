@@ -35,6 +35,6 @@
         </root>
     </springProfile>
 
-    <logger name="oleborn.order_service" level="DEBUG"/>
+    <logger name="oleborn.notification-service" level="DEBUG"/>
     <logger name="org.hibernate.SQL" level="DEBUG"/>
 </configuration>

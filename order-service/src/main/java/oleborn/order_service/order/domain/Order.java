@@ -45,6 +45,7 @@ public class Order {
         items.forEach(item -> item.setOrder(this));
     }
 
+    //метод расчета суммы заказа
     public BigDecimal getTotalPrice() {
         if (items == null || items.isEmpty()) {
             return BigDecimal.ZERO;

@@ -13,8 +13,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: true
+      ddl-auto: validate
+    show-sql: false
     open-in-view: false
     properties:
       hibernate:
@@ -32,6 +32,8 @@ management:
     enabled: true
     sampling:
       probability: 1.0   # в демо берём 100%, в production меньше (0.1, 0.01)
+    propagation:
+      type: w3c
   otlp:
     tracing:
       endpoint: http://jaeger:4318/v1/traces
