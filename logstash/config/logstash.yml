@@ -147,9 +147,9 @@ xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
 # В Logstash 8.x рекомендуется использовать:
 # log.level: info
 # log.format: json                     # логи в JSON (для сбора Filebeat)
-# 
+#
 # Параметр logging.format (или logging.json) устарел. Правильный ключ: log.format.
-# 
+#
 # Пример:
 # log.level: info
 # log.format: json

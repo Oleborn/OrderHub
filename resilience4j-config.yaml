@@ -1,0 +1,62 @@
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentService: # имя экземпляра, должно совпадать с name в @CircuitBreaker
+        # ----- ОСНОВНЫЕ ПАРАМЕТРЫ (поведение breaker) -----
+        registerHealthIndicator: true               # boolean, по умолчанию false – добавлять ли состояние circuit breaker в /actuator/health
+        allowHealthIndicatorToFail: false           # boolean, разрешить ли health indicator возвращать DOWN, когда breaker открыт
+        slidingWindowType: COUNT_BASED              # тип окна: COUNT_BASED (анализ по количеству вызовов) или TIME_BASED (анализ по времени)
+        slidingWindowSize: 10                        # размер окна: для COUNT_BASED – количество вызовов, для TIME_BASED – размер в секундах
+        failureRateThreshold: 50                     # порог ошибок в процентах (1..100), при превышении breaker открывается
+        slowCallRateThreshold: 50                    # порог медленных вызовов в процентах (1..100), аналогично
+        slowCallDurationThreshold: 2000ms             # длительность, после которой вызов считается медленным (например, 2000ms, 2s)
+        minimumNumberOfCalls: 5                       # минимальное количество вызовов в окне, прежде чем начнётся расчёт процентов
+        permittedNumberOfCallsInHalfOpenState: 3      # количество пробных вызовов в состоянии HALF_OPEN
+        waitDurationInOpenState: 30s                   # время, которое breaker остаётся в OPEN перед переходом в HALF_OPEN (например, 30s)
+        maxWaitDurationInHalfOpenState: 0s             # максимальное время, которое breaker может оставаться в HALF_OPEN (по умолчанию 0 – бесконечно)
+        automaticTransitionFromOpenToHalfOpenEnabled: true # автоматический переход из OPEN в HALF_OPEN по истечении waitDuration
+
+        # ----- НАСТРОЙКА ИНТЕРВАЛА В OPEN (альтернативы обычному waitDuration) -----
+        # (можно использовать либо обычный waitDurationInOpenState, либо экспоненциальный, либо рандомизированный – одновременно нельзя)
+        enableExponentialBackoff: true                # включить экспоненциальный рост интервала в OPEN
+        exponentialBackoffMultiplier: 2.0              # множитель для экспоненциального роста (должен быть >0)
+        exponentialMaxWaitDurationInOpenState: 60s     # максимальный интервал при экспоненциальном росте
+
+        enableRandomizedWait: true                     # включить рандомизированный интервал в OPEN
+        randomizedWaitFactor: 0.5                       # коэффициент случайности (0..1), например 0.5 означает ±50% отклонения
+
+        # ----- КАКИЕ ИСКЛЮЧЕНИЯ/РЕЗУЛЬТАТЫ СЧИТАТЬ ОШИБКАМИ -----
+        recordExceptions: # список исключений, которые считаются ошибкой (приводят к открытию breaker)
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - oleborn.order_service.order.exception.PaymentFailedException
+        ignoreExceptions: # список исключений, которые НЕ считаются ошибкой (игнорируются)
+          - java.lang.IllegalArgumentException
+        recordFailurePredicate:                          # полное имя класса, реализующего Predicate<Throwable> для динамического определения ошибки
+        recordResultPredicate:                           # полное имя класса, реализующего Predicate<Object> для пометки успешных результатов как ошибок (редко)
+        ignoreExceptionPredicate:                        # полное имя класса, реализующего Predicate<Throwable> для динамического игнорирования исключений
+
+        # ----- ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ -----
+        eventConsumerBufferSize: 100                     # размер буфера для событий (используется для EventPublisher)
+        writableStackTraceEnabled: true                  # включать ли полный stack trace в исключения, выбрасываемые breaker'ом (при открытом состоянии)
+        baseConfig: "default"                             # имя базовой конфигурации, от которой наследуются незаданные параметры
+  retry:
+    instances:
+      paymentService: # имя экземпляра, должно совпадать с name в @Retry
+        # ----- ОСНОВНЫЕ ПАРАМЕТРЫ -----
+        maxAttempts: 3                              # максимальное количество попыток (включая первую)
+        waitDuration: 200ms                         # время ожидания между попытками (фиксированное или базовое)
+        exponentialBackoffMultiplier: 2.0           # множитель для экспоненциального роста задержки (должен быть > 1)
+        exponentialMaxWaitDuration: 10s              # максимальная задержка при экспоненциальном росте
+        randomizedWaitFactor: 0.5                    # коэффициент случайного отклонения (jitter), от 0 до 1
+        retryExceptions: # список исключений, при которых выполняется повтор
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - java.io.IOException
+          - oleborn.order_service.order.exception.PaymentFailedException
+        ignoreExceptions: # исключения, которые НЕ вызывают повтор (игнорируются)
+          - java.lang.IllegalArgumentException
+        retryExceptionPredicate:                     # полное имя класса, реализующего Predicate<Throwable> для динамического определения повторяемых исключений
+        resultPredicate:                             # полное имя класса, реализующего Predicate<Object> для повтора на основе успешного результата (редко)
+        failAfterMaxAttempts: true                    # выбрасывать ли последнее исключение после исчерпания попыток (по умолчанию true)
+        # ----- ДОПОЛНИТЕЛЬНЫЕ ПАРАМЕТРЫ -----
+        eventConsumerBufferSize: 100                  # размер буфера событий (для слушателей)
+        baseConfig: "default"                          # имя базовой конфигурации, от которой наследуются незаданные параметры

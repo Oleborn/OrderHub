@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: payment-service
+
+  profiles:
+    active: elk
+
+server:
+  port: 8083
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - info
+          - prometheus
+          - loggers

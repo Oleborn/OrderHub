@@ -18,6 +18,7 @@
 filebeat.inputs:
   # Тип "container" – специально для Docker контейнеров
   - type: container
+
     #     Начиная с Filebeat 8.x тип container считается устаревающим (deprecated).
     #     Рекомендуется использовать filestream + docker parser, но container
     #     продолжает работать в 8.11 и будет поддерживаться ещё некоторое время.
@@ -109,6 +110,8 @@ processors:
                 container.name: "order_service"
             - equals:
                 container.name: "notification_service"
+            - equals:
+                container.name: "payment-service"
       # Условие: оставляем только события от указанных контейнеров.
       #
       # Другие возможные условия (все реально работают):
@@ -155,7 +158,6 @@ processors:
       #
       # add_error_key: добавлять тег _jsonparsefailure при ошибке парсинга.
       add_error_key: true
-      #
       # when – применять процессор только к определённым событиям.
       when:
         regexp:

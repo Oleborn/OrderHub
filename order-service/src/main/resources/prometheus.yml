@@ -52,8 +52,16 @@ scrape_configs:
     static_configs:
       - targets: [ 'notification-service:8082' ]
         labels:
-          application: 'notification-service'
-          environment: 'production'
+          application: 'notification-service'   # Имя приложения (для фильтрации)
+          environment: 'production'             # Окружение (prod/staging/dev)
+
+  - job_name: 'payment-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'payment-service:8083' ]
+        labels:
+          application: 'payment-service'   # Имя приложения (для фильтрации)
+          environment: 'production'             # Окружение (prod/staging/dev)
 
   - job_name: 'elasticsearch'
     static_configs:

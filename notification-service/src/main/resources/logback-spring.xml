@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <!-- Spring Boot свойства -->
-    <springProperty scope="context" name="service" source="spring.application.name" defaultValue="order-service"/>
+    <springProperty scope="context" name="service" source="spring.application.name" defaultValue="notification-service"/>
     <springProperty scope="context" name="environment" source="ENVIRONMENT" defaultValue="development"/>
 
-    <!-- ============================================= -->
-    <!-- ПРОФИЛЬ ПО УМОЛЧАНИЮ (если не указан профиль) -->
-    <!-- ============================================= -->
     <springProfile name="default">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -19,9 +15,6 @@
         </root>
     </springProfile>
 
-    <!-- ============================================= -->
-    <!-- JSON ПРОФИЛЬ: для отправки в ELK              -->
-    <!-- ============================================= -->
     <springProfile name="elk">
         <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
@@ -42,7 +35,6 @@
         </root>
     </springProfile>
 
-    <!-- Уровни логирования -->
-    <logger name="oleborn.orderhub_project" level="DEBUG"/>
+    <logger name="oleborn.notification-service" level="DEBUG"/>
     <logger name="org.hibernate.SQL" level="DEBUG"/>
 </configuration>
