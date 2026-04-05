@@ -81,7 +81,7 @@ server:
 
 logging:
   level:
-    org.hibernate.SQL: DEBUG
+#    org.hibernate.SQL: DEBUG
     root: info
 
 spring.jooq.sql-dialect: POSTGRES
@@ -101,8 +101,13 @@ resilience4j:
         exponentialMaxWaitDuration: 10s
         randomizedWaitFactor: 0.3
         retryExceptions:
+          - feign.FeignException
           - org.springframework.web.reactive.function.client.WebClientResponseException
           - oleborn.order_service.order.exception.PaymentFailedException
+
+          - io.netty.handler.timeout.ReadTimeoutException
+          - java.util.concurrent.TimeoutException
+#          - java.lang.RuntimeException
         ignoreExceptions:
           - java.lang.IllegalArgumentException
           - io.github.resilience4j.circuitbreaker.CallNotPermittedException
@@ -130,7 +135,30 @@ resilience4j:
         recordExceptions:
           - org.springframework.web.reactive.function.client.WebClientResponseException
           - oleborn.order_service.order.exception.PaymentFailedException
+
+          - io.netty.handler.timeout.ReadTimeoutException
+          - java.util.concurrent.TimeoutException
+#          - java.lang.RuntimeException
         ignoreExceptions:
           - java.lang.IllegalArgumentException
+  timelimiter:
+    instances:
+      paymentService:           # имя экземпляра TimeLimiter
+        timeoutDuration: 2000ms  # ограничение времени выполнения (500 миллисекунд)
+        cancelRunningFuture: true  # пытаться прервать асинхронную операцию при таймауте
+
+  bulkhead:
+    configs:
+      default:
+        maxConcurrentCalls: 10
+        maxWaitDuration: 0
+        writableStackTraceEnabled: true
+        eventConsumerBufferSize: 100
+    instances:
+      paymentService:                    # имя сервиса
+        baseConfig: default              # наследовать настройки из default
+        maxConcurrentCalls: 5            # только 5 одновременных вызовов к платежам
+        maxWaitDuration: 0               # не ждать, сразу отказ
+
 
 
