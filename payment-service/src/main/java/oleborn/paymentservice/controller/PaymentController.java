@@ -30,15 +30,19 @@ public class PaymentController {
             int randomRequest = random.nextInt(100);
 
             // Имитация ошибки
-            if (randomRequest < 80) {
+            if (randomRequest < 60) {
 
-                log.error("Симуляция ошибки оплаты заказа id: {}", request.orderId());
+//                log.error("Симуляция ошибки оплаты заказа id: {}", request.orderId());
+//
+//                //типа отловили ошибку и вернули читаемый статус
+//                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+//                        .body(
+//                                new PaymentResponseDto(false, "Сервис оплаты недоступен")
+//                        );
 
-                //типа отловили ошибку и вернули читаемый статус
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                        .body(
-                                new PaymentResponseDto(false, "Сервис оплаты недоступен")
-                        );
+                log.error("Симуляция замедления оплаты заказа id: {}", request.orderId());
+
+                Thread.sleep(5000);
             }
 
         }
