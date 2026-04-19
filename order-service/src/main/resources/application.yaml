@@ -26,6 +26,15 @@ spring:
     enabled: true
     change-log: classpath:/db/changelog/changelog_master.yaml
 
+  task:
+    scheduling:
+      pool:
+        size: 5                # Размер пула потоков для @Scheduled/если надо
+      thread-name-prefix: "scheduled-"
+      shutdown:
+        await-termination: true
+        await-termination-period: 60s
+
 
 management:
   tracing:
@@ -138,6 +147,7 @@ resilience4j:
 
           - io.netty.handler.timeout.ReadTimeoutException
           - java.util.concurrent.TimeoutException
+          - io.github.resilience4j.bulkhead.BulkheadFullException
 #          - java.lang.RuntimeException
         ignoreExceptions:
           - java.lang.IllegalArgumentException
@@ -160,5 +170,13 @@ resilience4j:
         maxConcurrentCalls: 5            # только 5 одновременных вызовов к платежам
         maxWaitDuration: 0               # не ждать, сразу отказ
 
-
+payment:
+  retry:
+    max-attempts: 3
+    timeout: 30
+    batch-size: 100  # Максимум 50 заказов за один запуск сканера
+scheduling:
+  payment-scanner:
+    fixed-delay: 30000  # 30 секунд между запусками
+    initial-delay: 30000
 

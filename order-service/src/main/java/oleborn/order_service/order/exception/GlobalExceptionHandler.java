@@ -42,6 +42,15 @@ public class GlobalExceptionHandler {
 
     }
 
+    @ExceptionHandler(OrderCreationException.class)
+    public ResponseEntity<ErrorDto> handleException(OrderCreationException ex) {
+
+        ErrorDto error = new ErrorDto(500, "Ошибка оформления заказа", ex.getMessage());
+
+        return ResponseEntity.internalServerError().body(error);
+
+    }
+
     @ExceptionHandler(CircuitBreakerOpenException.class)
     public ResponseEntity<ErrorDto> handleException(CircuitBreakerOpenException ex) {
 

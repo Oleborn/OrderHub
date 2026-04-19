@@ -6,4 +6,7 @@ public enum OrderStatus {
     PAID,
     CANCELLED,
 
+    //новый при неоплате
+    PENDING,
+
 }
