@@ -3,7 +3,7 @@ CREATE TABLE orders(
     status VARCHAR(50) NOT NULL,
     creat_at TIMESTAMP WITH TIME ZONE NOT NULL
 
-    CONSTRAINT check_status CHECK ( status IN ('CREATED', 'PAID', 'CANCELLED'))
+    CONSTRAINT check_status CHECK ( status IN ('CREATED', 'PAID', 'PENDING', 'CANCELLED'))
 
 );
 

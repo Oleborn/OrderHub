@@ -1,7 +1,9 @@
 package oleborn.order_service.order.service;
 
 import feign.FeignException;
+import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
 
 
 @Service
@@ -105,7 +108,7 @@ public class PaymentService {
 
         log.debug("ПОПЫТКА {} ИЗ 3 <===", attempt);
 
-        try{
+        try {
 
             PaymentResponseDto response = paymentClient
                     .processPayment(savedOrder.getId(), savedOrder.getTotalPrice())
@@ -122,35 +125,38 @@ public class PaymentService {
         }
     }
 
-    @TimeLimiter(name = "paymentService")
     @CircuitBreaker(
-            name = "paymentService",               //Имя экземпляра, должно соответствовать имени в конфигурации
-            fallbackMethod = "fallbackProcessPayment" //Метод, который вызовется при открытом breaker'е или исключении
-            //для асинхронного взаимодействия должен возвращать CompletableFuture<PaymentResponseDto>
+            name = "paymentService",                //Имя экземпляра, должно соответствовать имени в конфигурации
+            fallbackMethod = "paymentFallback"      //Метод, который вызовется при открытом breaker'е или исключении
+                                                    //для асинхронного взаимодействия должен возвращать CompletableFuture<PaymentResponseDto>
     )
+    //так как advice в прокси от CircuitBreaker выше всех - он последний кто реагирует на ошибку и идет в paymentFallback
+    @TimeLimiter(name = "paymentService")
     @Retry(name = "paymentService")
-    @Bulkhead(name = "paymentService", fallbackMethod = "fallbackBulkheadPayment")
+    @Bulkhead(name = "paymentService")
     public CompletableFuture<PaymentResponseDto> processPaymentResilience4j(Order savedOrder) {
+        return paymentClient
+                .processPayment(savedOrder.getId(), savedOrder.getTotalPrice())
+                .toFuture()
+                .exceptionally(throwable -> {
 
-        try{
-            return paymentClient
-                    .processPayment(savedOrder.getId(), savedOrder.getTotalPrice())
-                    .toFuture();
+                    Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
 
-        } catch (WebClientResponseException e) {
-            log.error("Техническая ошибка при вызове payment-service");
-            throw new PaymentFailedException("Payment service error: " + e.getStatusText());
-        }
+                    log.error("Техническая ошибка при вызове payment-service: {}", cause.getMessage());
+
+                    throw new PaymentFailedException("Payment service error: " + cause.getMessage());
+
+                });
     }
 
     @CircuitBreaker(
             name = "paymentService",
-            fallbackMethod = "fallbackProcessPayment"
+            fallbackMethod = "paymentFallback"
     )
     @Retry(name = "paymentService")
-    @Bulkhead(name = "paymentService", fallbackMethod = "fallbackBulkheadPayment")
+    @Bulkhead(name = "paymentService", fallbackMethod = "paymentFallback")
     public PaymentResponseDto processPaymentFeign(Order savedOrder) {
-        try{
+        try {
             PaymentResponseDto response = paymentFeignClient.processPayment(
                     new PaymentRequestDto(savedOrder.getId(), savedOrder.getTotalPrice())
             );
@@ -165,17 +171,28 @@ public class PaymentService {
         }
     }
 
-    @Recover
-    public PaymentResponseDto fallbackProcessPayment(Order savedOrder, Throwable t) {
-        log.warn("Резервный вариант логики для заказа: {}, после срабатывания circuit breaker: {}",savedOrder.getId(), t.getMessage());
+    public CompletableFuture<PaymentResponseDto> paymentFallback(Order savedOrder, Throwable t) {
 
-        throw new PaymentFailedException("Payment сервис временно недоступен: " + t.getMessage());
+        log.warn("Fallback для заказа: {}, по причине: {}", savedOrder.getId(), t.getMessage());
+
+        String userMessage = getUserMessage(t);
+
+        return CompletableFuture.completedFuture(
+                PaymentResponseDto.builder()
+                        .isSuccessful(true)
+                        .requiresPendingProcessing(true)
+                        .message(userMessage)
+                        .build()
+        );
+
     }
 
-    @Recover
-    public PaymentResponseDto fallbackBulkheadPayment(Order savedOrder, Throwable t) {
-        log.warn("Сервис перегружен: {}, сработал Bulkhead для: {}",savedOrder.getId(), t.getMessage());
-
-        throw new PaymentFailedException("Payment сервис временно недоступен: " + t.getMessage());
+    private String getUserMessage(Throwable t) {
+        if (t instanceof TimeoutException) {
+            return "Платёжный сервис временно недоступен. Заказ будет обработан автоматически.";
+        } else if (t instanceof CallNotPermittedException) {
+            return "Сервис оплаты перегружен. Ваш заказ в очереди на обработку.";
+        }
+        return "Заказ принят. Статус оплаты будет обновлён позже.";
     }
 }
