@@ -6,6 +6,7 @@
 #
 # Компоненты:
 #   postgres     - база данных (хранит заказы)
+#   rabbitmq     - брокер сообщений (асинхронные задачи / уведомления)
 #   orderhub-app - само приложение Spring Boot
 #   prometheus   - сбор метрик (хранит 15 дней)
 #   grafana      - визуализация (дашборды)
@@ -40,9 +41,32 @@ services:
     healthcheck:
       # Проверка, что БД действительно готова принимать подключения
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s   # Проверять каждые 10 секунд
-      timeout: 5s     # Ждать ответа не больше 5 секунд
-      retries: 5      # 5 неудач = контейнер нездоров
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ - Брокер сообщений (AMQP 0-9-1) с панелью управления
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:4.2.5-management-alpine
+    container_name: rabbitmq_orderhub
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"        # AMQP-порт для клиентов
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"  # Веб-интерфейс управления
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq      # Персистентность сообщений и конфигурации
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ---------------------------------------------------------------------------
   # Spring Boot приложение
@@ -105,9 +129,17 @@ services:
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL}
       PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL}
 
+      # Подключение к RabbitMQ
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
+
     depends_on:
       postgres:
-        condition: service_healthy  # Ждём, пока PostgreSQL полностью готов
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       # Проверка, что Spring Boot жив и отвечает
@@ -147,6 +179,15 @@ services:
       SPRING_PROFILES_ACTIVE: elk
       ENVIRONMENT: production
 
+      # Подключение к RabbitMQ (consumer)
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
@@ -368,6 +409,8 @@ services:
 volumes:
   postgres_data:
     name: orderhub_postgres_data
+  rabbitmq_data:                          # новый том для RabbitMQ
+    name: orderhub_rabbitmq_data
   prometheus_data:
     name: orderhub_prometheus_data
   grafana_data:

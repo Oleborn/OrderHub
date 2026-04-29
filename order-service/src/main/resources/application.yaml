@@ -35,6 +35,27 @@ spring:
         await-termination: true
         await-termination-period: 60s
 
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+    connection-timeout: 5s
+    requested-heartbeat: 30s
+
+    # Publisher
+    publisher-confirm-type: correlated   # асинхронные подтверждения с корреляцией
+    publisher-returns: true              # возвращать недоставленные сообщения
+
+    template:
+      mandatory: true                    # требовать доставки в очередь
+      retry:
+        enabled: true
+        initial-interval: 1s
+        max-attempts: 3
+        multiplier: 2.0
+        max-interval: 10s
+
 
 management:
   tracing:

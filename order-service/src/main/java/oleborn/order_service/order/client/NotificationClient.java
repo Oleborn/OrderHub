@@ -49,5 +49,4 @@ public class NotificationClient {
             MDC.clear();
         }
     }
-
 }
