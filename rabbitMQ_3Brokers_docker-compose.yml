@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # ==================== УЗЕЛ 1 ====================
+  rabbitmq-1:
+    image: rabbitmq:4.1-management-alpine
+    container_name: rabbitmq-1
+    hostname: rabbitmq-1                          # ← важно для кластеризации!
+    ports:
+      - "5672:5672"                               # AMQP (балансировка на все узлы)
+      - "15672:15672"                             # Management UI (узел 1)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      # Секрет для взаимной аутентификации узлов
+      RABBITMQ_ERLANG_COOKIE: "supersecretcookie" # ← должен быть одинаковым на всех узлах!
+    volumes:
+      - rabbitmq-1-data:/var/lib/rabbitmq
+    networks:
+      - rabbitmq-cluster
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== УЗЕЛ 2 ====================
+  rabbitmq-2:
+    image: rabbitmq:4.1-management-alpine
+    container_name: rabbitmq-2
+    hostname: rabbitmq-2
+    ports:
+      - "5673:5672"                               # Пробрасываем на другой порт хоста
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_ERLANG_COOKIE: "supersecretcookie" # ← одинаковый!
+      # Указываем, к какому узлу присоединиться
+      RABBITMQ_CLUSTER_NODES: "rabbit@rabbitmq-1"
+    volumes:
+      - rabbitmq-2-data:/var/lib/rabbitmq
+    networks:
+      - rabbitmq-cluster
+    depends_on:
+      rabbitmq-1:
+        condition: service_healthy               # Ждём, пока узел 1 готов
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== УЗЕЛ 3 ====================
+  rabbitmq-3:
+    image: rabbitmq:4.1-management-alpine
+    container_name: rabbitmq-3
+    hostname: rabbitmq-3
+    ports:
+      - "5674:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_ERLANG_COOKIE: "supersecretcookie"
+      RABBITMQ_CLUSTER_NODES: "rabbit@rabbitmq-1"
+    volumes:
+      - rabbitmq-3-data:/var/lib/rabbitmq
+    networks:
+      - rabbitmq-cluster
+    depends_on:
+      rabbitmq-1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rabbitmq-1-data:
+  rabbitmq-2-data:
+  rabbitmq-3-data:
+
+networks:
+  rabbitmq-cluster:
+    driver: bridge

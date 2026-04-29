@@ -5,6 +5,28 @@ spring:
   profiles:
     active: elk
 
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+    connection-timeout: 5s
+    requested-heartbeat: 30s
+
+    listener:
+      simple:
+        prefetch: 10
+        concurrency: 3
+        max-concurrency: 10
+        acknowledge-mode: auto          # подтверждение после успешной обработки
+        default-requeue-rejected: false # poison -> DLQ
+        retry:
+          enabled: true
+          initial-interval: 2s
+          max-attempts: 3
+          multiplier: 2.0
+          max-interval: 10s
+
 server:
   port: 8082
 

@@ -14,6 +14,7 @@ import oleborn.order_service.order.domain.dto.PaymentResponseDto;
 import oleborn.order_service.order.exception.NotFoundOrderException;
 import oleborn.order_service.order.exception.OrderCreationException;
 import oleborn.order_service.order.metrics.annotation.BusinessMetric;
+import oleborn.order_service.order.producer.NotificationProducer;
 import oleborn.order_service.order.repository.OrderRepository;
 import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
@@ -32,6 +33,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PaymentService paymentService;
+    private final NotificationProducer notificationProducer;
 
     private final AtomicBoolean failureMode = new AtomicBoolean(false);
     private final Random random = new Random();
@@ -91,7 +93,7 @@ public class OrderService {
 
                 log.info("Оплата заказа {} успешно проведена", savedOrder.getId());
 
-                eventPublisher.publishEvent(OrderCreatedEvent.of(
+                notificationProducer.sendOrderCreatedEvent(OrderCreatedEvent.of(
                                 savedOrder.getId(),
                                 MDC.getCopyOfContextMap()
                         )
