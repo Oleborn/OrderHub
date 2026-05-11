@@ -5,13 +5,41 @@ spring:
   profiles:
     active: elk
 
-  rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST}
-    port: ${SPRING_RABBITMQ_PORT}
-    username: ${SPRING_RABBITMQ_USERNAME}
-    password: ${SPRING_RABBITMQ_PASSWORD}
-    connection-timeout: 5s
-    requested-heartbeat: 30s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+#    нужен для отправки сообщений по ретраю и DLQ
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      compression-type: gzip   # или lz4, или zstd, чтобы избежать работы с snappy
+    consumer:
+      group-id: notification-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+#      Можно указать как вариант прямую сериализацию, но тогда если в топик придут иные сообщения все сломается
+#      properties:
+#        spring.json.use.type.headers: false
+#        spring.json.value.default.type: oleborn.notificationservice.event.OrderCreatedEvent
+
+      # SSL / TLS НАСТРОЙКИ ДЛЯ PRODUCTION
+      # Для production-окружения Kafka обычно требует шифрования (SSL/TLS) и, возможно, взаимной аутентификации (mTLS).
+      # Все чувствительные данные (пароли, пути) должны выноситься в переменные окружения (например, ${KAFKA_KEYSTORE_PASSWORD}).
+      # Эти настройки необходимо добавить в секцию properties (на том же уровне, что и другие свойства Kafka).
+      # properties:
+      #   security.protocol: SSL                                  - включает шифрование; не путать с SASL_SSL
+      #   ssl.keystore.location: ${KAFKA_KEYSTORE_LOCATION}       - путь к JKS/PKCS12-файлу с ключом клиента
+      #   ssl.keystore.password: ${KAFKA_KEYSTORE_PASSWORD}       - пароль от хранилища ключей
+      #   ssl.key.password: ${KAFKA_KEY_PASSWORD}                 - пароль от самого ключа (часто совпадает с keystore)
+      #   ssl.truststore.location: ${KAFKA_TRUSTSTORE_LOCATION}   - путь к хранилищу доверенных сертификатов (CA)
+      #   ssl.truststore.password: ${KAFKA_TRUSTSTORE_PASSWORD}   - пароль от truststore
+      #   ssl.endpoint.identification.algorithm: ""               - отключает проверку имени узла (не для прода) для строгой проверки используйте "HTTPS"
+      #
+      #️ВНИМАНИЕ: при использовании SSL необходимо, чтобы брокер Kafka был
+      #настроен на приём SSL-соединений (порт 9093 обычно, а не 9092).
+      #Адрес брокера должен соответствовать: localhost:9093.
+      #Также потребуется добавить SSL-настройки в Producer, если он отправляет сообщения.
 
     listener:
       simple:
@@ -26,6 +54,10 @@ spring:
           max-attempts: 3
           multiplier: 2.0
           max-interval: 10s
+
+app:
+  topic:
+    order-create-topic: "order.created"
 
 server:
   port: 8082

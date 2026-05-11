@@ -6,7 +6,7 @@
 #
 # Компоненты:
 #   postgres     - база данных (хранит заказы)
-#   rabbitmq     - брокер сообщений (асинхронные задачи / уведомления)
+#   kafka        - лог сообщений (асинхронные задачи / уведомления)
 #   orderhub-app - само приложение Spring Boot
 #   prometheus   - сбор метрик (хранит 15 дней)
 #   grafana      - визуализация (дашборды)
@@ -45,28 +45,53 @@ services:
       timeout: 5s
       retries: 5
 
-  # ---------------------------------------------------------------------------
-  # RabbitMQ - Брокер сообщений (AMQP 0-9-1) с панелью управления
-  # ---------------------------------------------------------------------------
-  rabbitmq:
-    image: rabbitmq:4.2.5-management-alpine
-    container_name: rabbitmq_orderhub
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: kafka
     ports:
-      - "${RABBITMQ_PORT:-5672}:5672"        # AMQP-порт для клиентов
-      - "${RABBITMQ_MGMT_PORT:-15672}:15672"  # Веб-интерфейс управления
+      - "9092:9092"   # PLAINTEXT для внешних подключений (хост, инструменты)
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq      # Персистентность сообщений и конфигурации
-    restart: unless-stopped
+      CLUSTER_ID: ${CLUSTER_ID}   # ваш UUID
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+
+      # Два протокола: внутренний для Compose и внешний для хоста
+      KAFKA_LISTENERS: "INTERNAL://0.0.0.0:29092,PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,PLAINTEXT://host.docker.internal:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+
+      # Параметры для single‑node
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 5000
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+
     networks:
       - orderhub-network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # резолвит host.docker.internal на хост (Linux тоже)
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: orderhub
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:29092"   # используем внутренний INTERNAL listener
+    depends_on:
+      - kafka
+    networks:
+      - orderhub-network
+
 
   # ---------------------------------------------------------------------------
   # Spring Boot приложение
@@ -129,16 +154,11 @@ services:
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL}
       PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL}
 
-      # Подключение к RabbitMQ
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
+      #kafka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
 
     depends_on:
       postgres:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -179,15 +199,9 @@ services:
       SPRING_PROFILES_ACTIVE: elk
       ENVIRONMENT: production
 
-      # Подключение к RabbitMQ (consumer)
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
+#     kafka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
 
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
@@ -409,8 +423,6 @@ services:
 volumes:
   postgres_data:
     name: orderhub_postgres_data
-  rabbitmq_data:                          # новый том для RabbitMQ
-    name: orderhub_rabbitmq_data
   prometheus_data:
     name: orderhub_prometheus_data
   grafana_data:
@@ -421,6 +433,8 @@ volumes:
     name: orderhub_elasticsearch_data
   filebeat_data:
     name: orderhub_filebeat_data
+  kafka_data:
+    name: orderhub_kafka_data
 
 # -------------------------------------------------------------------------------
 # Изолированная сеть для сервисов

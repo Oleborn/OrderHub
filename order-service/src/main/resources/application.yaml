@@ -35,14 +35,6 @@ spring:
         await-termination: true
         await-termination-period: 60s
 
-  rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST}
-    port: ${SPRING_RABBITMQ_PORT}
-    username: ${SPRING_RABBITMQ_USERNAME}
-    password: ${SPRING_RABBITMQ_PASSWORD}
-    connection-timeout: 5s
-    requested-heartbeat: 30s
-
     # Publisher
     publisher-confirm-type: correlated   # асинхронные подтверждения с корреляцией
     publisher-returns: true              # возвращать недоставленные сообщения
@@ -56,6 +48,23 @@ spring:
         multiplier: 2.0
         max-interval: 10s
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all                     # подтверждение от всех реплик
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      compression-type: gzip   # или lz4, или zstd
+      properties:
+        enable.idempotence: true    # предотвращает дубликаты при повторах
+        spring.json.add.type.headers: true # Включает заголовок __TypeId__ для десериализации JSON
+        max.in.flight.requests.per.connection: 1   # порядок сообщений
+        linger.ms: 5                # небольшой батчинг
+
+app:
+  topic:
+    order-create-topic: "order.created"
 
 management:
   tracing:
@@ -200,4 +209,3 @@ scheduling:
   payment-scanner:
     fixed-delay: 30000  # 30 секунд между запусками
     initial-delay: 30000
-
