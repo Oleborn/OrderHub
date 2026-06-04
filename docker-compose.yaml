@@ -36,6 +36,8 @@ services:
       - "max_connections=100"      # Максимум подключений (не даём упасть от перегрузки)
       - "-c"
       - "shared_buffers=256MB"      # Кэш в памяти (ускоряет запросы)
+      - "-c"
+      - "wal_level=logical"
     networks:
       - orderhub-network  # Изолированная сеть для сервисов
     healthcheck:
@@ -44,6 +46,43 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  connect:
+    image: debezium/connect:2.5
+    container_name: debezium-connect
+    ports:
+      - "8099:8083"
+      - "9999:9999"  # Порт для JMX-метрик
+    environment:
+      # Адрес Kafka-кластера (внутреннее имя сервиса в Docker-сети)
+      BOOTSTRAP_SERVERS: kafka:29092
+      # Идентификатор группы коннекторов (для координации в кластере Connect)
+      GROUP_ID: 1
+      # Название топика, где Connect хранит конфигурации коннекторов (автосоздаётся)
+      CONFIG_STORAGE_TOPIC: connect_configs
+      # Название топика для хранения смещений (оффсетов) коннекторов
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      # Название топика для статусов коннекторов и их задач
+      STATUS_STORAGE_TOPIC: connect_statuses
+      # Конвертер для ключа сообщений, отправляемых в Kafka (здесь JSON, без схемы)
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      # Конвертер для значения сообщений в Kafka (тоже JSON)
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      # Конвертер для внутренних сообщений Connect (например, для оффсетов) – также JSON
+      INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      # Путь, где Connect ищет плагины (коннекторы). В образе Debezium по умолчанию там лежат готовые коннекторы.
+      CONNECT_PLUGIN_PATH: /kafka/connect
+#      отключающие схемы в конвертерах
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: connect
+    depends_on:
+      - kafka
+      - postgres
+    networks:
+      - orderhub-network
 
   kafka:
     image: apache/kafka:3.8.0
@@ -78,6 +117,11 @@ services:
       - "host.docker.internal:host-gateway"   # резолвит host.docker.internal на хост (Linux тоже)
     volumes:
       - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -141,7 +185,7 @@ services:
       # -----------------------------------------------------------------------
       # Логирование (опционально, для отладки)
       # -----------------------------------------------------------------------
-      LOGGING_LEVEL_COM_ORDERHUB: DEBUG  # Детальные логи
+      LOGGING_LEVEL_COM_ORDERHUB: INFO  # Детальные логи
 
       # Трассировка OpenTelemetry
       MANAGEMENT_TRACING_ENABLED: "true"

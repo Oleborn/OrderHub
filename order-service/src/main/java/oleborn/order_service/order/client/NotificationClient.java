@@ -14,39 +14,40 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Deprecated
 public class NotificationClient {
 
     private final WebClient notificationWebClient;
 
-    @Async
-    public void notifyOrderCreated(OrderCreatedEvent event) {
-
-        Map<String, String> context = event.context();
-
-        if (context != null) {
-            MDC.setContextMap(context);
-        }
-
-        long orderId = event.orderId();
-
-        try {
-
-            log.info("Отправка уведомления для заказа: {}, с traceID: {}, с суммой: {}",
-                    orderId,
-                    MDC.get("traceId"),
-                    MDC.get("total_amount")
-            );
-
-            NotificationRequest request = new NotificationRequest(event.orderId(), "CREATED");
-
-            notificationWebClient.post()
-                    .uri("/api/notifications")
-                    .bodyValue(request)
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block(); // в текущем стеке блокируем — нормально
-        } finally {
-            MDC.clear();
-        }
-    }
+//    @Async
+//    public void notifyOrderCreated(OrderCreatedEvent event) {
+//
+//        Map<String, String> context = event.context();
+//
+//        if (context != null) {
+//            MDC.setContextMap(context);
+//        }
+//
+//        long orderId = event.orderId();
+//
+//        try {
+//
+//            log.info("Отправка уведомления для заказа: {}, с traceID: {}, с суммой: {}",
+//                    orderId,
+//                    MDC.get("traceId"),
+//                    MDC.get("total_amount")
+//            );
+//
+//            NotificationRequest request = new NotificationRequest(event.orderId(), "CREATED");
+//
+//            notificationWebClient.post()
+//                    .uri("/api/notifications")
+//                    .bodyValue(request)
+//                    .retrieve()
+//                    .toBodilessEntity()
+//                    .block(); // в текущем стеке блокируем — нормально
+//        } finally {
+//            MDC.clear();
+//        }
+//    }
 }

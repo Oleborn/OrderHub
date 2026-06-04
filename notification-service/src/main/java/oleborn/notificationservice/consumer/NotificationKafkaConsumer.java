@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oleborn.notificationservice.event.OrderCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.retrytopic.DltStrategy;
@@ -56,8 +55,8 @@ public class NotificationKafkaConsumer {
 
             // ===== СОЗДАНИЕ ТОПИКОВ =====
             autoCreateTopics = "true",                     // Автоматически создавать ретрай-топики и DLT
-            numPartitions = "3",                           // Количество партиций для создаваемых топиков
-            replicationFactor = "3",                       // Фактор репликации (по умолчанию -1 = использовать настройки брокера)
+            numPartitions = "1",                           // Количество партиций для создаваемых топиков, делаем 1 потому что топик 1
+            replicationFactor = "1",                       // Фактор репликации (по умолчанию -1 = использовать настройки брокера), делаем 1 потому что топик 1
 
             // ===== ИНТЕГРАЦИЯ С LISTENER'ом =====
             listenerContainerFactory = "kafkaListenerContainerFactory", // Фабрика для консьюмеров ретрай- и DLT-топиков (по умолчанию – из @KafkaListener)

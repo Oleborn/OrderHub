@@ -57,7 +57,7 @@ spring:
 
 app:
   topic:
-    order-create-topic: "order.created"
+    order-create-topic: "order.outbox"
 
 server:
   port: 8082
@@ -81,6 +81,11 @@ management:
           - info
           - prometheus
           - loggers
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN
 
 #logging:
 #  # Блок настройки структурированного (JSON) логирования

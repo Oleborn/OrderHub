@@ -209,3 +209,19 @@ scheduling:
   payment-scanner:
     fixed-delay: 30000  # 30 секунд между запусками
     initial-delay: 30000
+
+debezium:
+  connector:
+    name: "outbox-connector"
+    topics-prefix: "orderhub"
+    table-include-list: "public.outbox_event"
+    outbox-route-topic: "order.outbox"
+    plugin-name: "pgoutput"
+  connect:
+    url: ${KAFKA_CONNECT_URL:http://connect:8083}
+  database:
+    host: ${POSTGRES_HOST:postgres}
+    port: ${POSTGRES_PORT:5432}
+    name: ${POSTGRES_DB}
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
