@@ -1,0 +1,18 @@
+{
+  "name": "outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "orderhub_prod_user",
+    "database.password": "postgres",
+    "database.dbname": "orderhub_prod",
+    "topic.prefix": "orderhub",
+    "table.include.list": "public.outbox_event",
+    "plugin.name": "pgoutput",
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+    "transforms.outbox.route.topic.replacement": "order.outbox",
+    "transforms.outbox.table.expand.json.payload": "true"
+  }
+}

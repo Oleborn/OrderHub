@@ -6,16 +6,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import oleborn.order_service.order.dictionary.OrderStatus;
+import oleborn.order_service.order.dictionary.OutboxStatus;
 import oleborn.order_service.order.domain.Order;
 import oleborn.order_service.order.domain.OrderItem;
+import oleborn.order_service.order.domain.OutboxEvent;
 import oleborn.order_service.order.domain.dto.CreateOrderRequestDto;
 import oleborn.order_service.order.domain.dto.OrderCreatedEvent;
 import oleborn.order_service.order.domain.dto.PaymentResponseDto;
 import oleborn.order_service.order.exception.NotFoundOrderException;
 import oleborn.order_service.order.exception.OrderCreationException;
 import oleborn.order_service.order.metrics.annotation.BusinessMetric;
-import oleborn.order_service.order.producer.KafkaNotificationProducer;
 import oleborn.order_service.order.repository.OrderRepository;
+import oleborn.order_service.order.repository.OutboxEventRepository;
+import oleborn.order_service.outbox.DebeziumMetrics;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +34,9 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final PaymentService paymentService;
-    private final KafkaNotificationProducer kafkaNotificationProducer;
+    private final OutboxEventRepository outboxEventRepository;
+    private final DebeziumMetrics debeziumMetrics;
+
 
     private final AtomicBoolean failureMode = new AtomicBoolean(false);
     private final Random random = new Random();
@@ -91,12 +96,28 @@ public class OrderService {
 
                 log.info("Оплата заказа {} успешно проведена", savedOrder.getId());
 
-                kafkaNotificationProducer.sendOrderCreatedEvent(
-                        OrderCreatedEvent.of(
-                                savedOrder.getId(),
-                                MDC.getCopyOfContextMap()
-                        )
+                // Сохраняем в outbox
+                String traceId = Span.current().getSpanContext().getTraceId();
+                String spanId = Span.current().getSpanContext().getSpanId();
+
+                OrderCreatedEvent orderCreatedEvent = OrderCreatedEvent.of(
+                        savedOrder.getId(),
+                        MDC.getCopyOfContextMap()
                 );
+
+                OutboxEvent outboxEvent = OutboxEvent.builder()
+                        .aggregateType("Order")
+                        .aggregateId(savedOrder.getId().toString())
+                        .eventType("OrderCreatedEvent")
+                        .payload(orderCreatedEvent)
+                        .traceId(traceId)
+                        .spanId(spanId)
+                        .status(OutboxStatus.NEW)
+                        .build();
+
+                outboxEventRepository.save(outboxEvent);
+
+                debeziumMetrics.incrementOutboxCreated();
 
                 log.debug("Отправлено инфо о заказе, id: {}", savedOrder.getId());
 

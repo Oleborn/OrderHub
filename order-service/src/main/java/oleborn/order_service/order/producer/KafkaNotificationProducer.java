@@ -15,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@Deprecated
 public class KafkaNotificationProducer {
 
     @Value("${app.topic.order-create-topic}")
@@ -28,24 +29,26 @@ public class KafkaNotificationProducer {
 
     public void sendOrderCreatedEvent(OrderCreatedEvent event) {
 
-        //Все события для одного orderId будут попадать в одну партицию → сохраняется порядок событий по заказу
-        String key = String.valueOf(event.orderId());
-
-        //Возвращает CompletableFuture, который завершится, когда брокер подтвердит получение (или будет ошибка)
-        CompletableFuture<SendResult<String, Object>> future = reliableKafkaTemplate.send(orderCreateTopic, key, event);
-
-        //Асинхронное ожидание результата. Позволяет выполнить код после того, как брокер ответит (или ошибка), не блокируя основной поток
-        future.whenComplete((result, ex) -> {
-            if (ex == null) {
-                log.info("Событие отправлено в topic: {}, partition: {}, offset: {}",
-                        orderCreateTopic,
-                        result.getRecordMetadata().partition(),
-                        result.getRecordMetadata().offset()
-                );
-            } else {
-                log.error("Ошибка отправки события по orderId: {}", event.orderId(), ex);
-                // Здесь можно сохранить в outbox
-            }
-        });
+//        //Все события для одного orderId будут попадать в одну партицию → сохраняется порядок событий по заказу
+//        String key = String.valueOf(event.orderId());
+//
+////        throw new RuntimeException("Simulated crash before Kafka send");
+//
+//        //Возвращает CompletableFuture, который завершится, когда брокер подтвердит получение (или будет ошибка)
+//        CompletableFuture<SendResult<String, Object>> future = reliableKafkaTemplate.send(orderCreateTopic, key, event);
+//
+//        //Асинхронное ожидание результата. Позволяет выполнить код после того, как брокер ответит (или ошибка), не блокируя основной поток
+//        future.whenComplete((result, ex) -> {
+//            if (ex == null) {
+//                log.info("Событие отправлено в topic: {}, partition: {}, offset: {}",
+//                        orderCreateTopic,
+//                        result.getRecordMetadata().partition(),
+//                        result.getRecordMetadata().offset()
+//                );
+//            } else {
+//                log.error("Ошибка отправки события по orderId: {}", event.orderId(), ex);
+//                // Здесь можно сохранить в outbox
+//            }
+//        });
     }
 }

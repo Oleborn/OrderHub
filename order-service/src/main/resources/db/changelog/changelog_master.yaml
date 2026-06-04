@@ -17,6 +17,15 @@ databaseChangeLog:
           splitStatements: true
           endDelimiter: ;
 
+  - changeSet:
+      id: V3__create_outbox_table.sql
+      author: orderhub
+      sqlFile:
+        path: db/changelog/changes/V3__create_outbox_table.sql
+        relativeToChangeFile: true
+        splitStatements: true
+        endDelimiter: ;
+
 #  - property:
 #      name: now
 #      value: now()
