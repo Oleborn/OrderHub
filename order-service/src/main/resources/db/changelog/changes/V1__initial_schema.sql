@@ -3,8 +3,8 @@ CREATE TABLE orders(
     status VARCHAR(50) NOT NULL,
     creat_at TIMESTAMP WITH TIME ZONE NOT NULL
 
-    CONSTRAINT check_status CHECK ( status IN ('CREATED', 'PAID', 'PENDING', 'CANCELLED'))
-
+--  из-за H2 которая работает под капотом у JOOQ вынуждены использовать CHECK
+    CONSTRAINT check_status CHECK (status IN ('CREATED', 'PAID', 'PENDING', 'CANCELLED', 'AWAITING_PAYMENT'))
 );
 
 CREATE TABLE order_items (
@@ -24,3 +24,10 @@ CREATE TABLE order_items (
 
 CREATE INDEX idx_order_items_id ON order_items(order_id);
 CREATE INDEX idx_order_status ON orders(status);
+
+
+-- ENUM даёт строгую типизацию и лучше отражает бизнес-логику.
+-- Значения перечисления хранятся компактно (по 4 байта вместо текста).
+-- Индексы и запросы с ENUM работают быстрее, чем с текстовым полем + CHECK.
+
+-- CREATE TYPE order_status AS ENUM ('CREATED', 'PAID', 'PENDING', 'CANCELLED', 'AWAITING_PAYMENT');

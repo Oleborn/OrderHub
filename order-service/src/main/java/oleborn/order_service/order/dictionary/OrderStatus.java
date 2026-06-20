@@ -9,4 +9,6 @@ public enum OrderStatus {
     //новый при неоплате
     PENDING,
 
+    AWAITING_PAYMENT
+
 }

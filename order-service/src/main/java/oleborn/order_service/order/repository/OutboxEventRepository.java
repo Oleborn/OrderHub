@@ -1,13 +1,11 @@
 package oleborn.order_service.order.repository;
 
 import oleborn.order_service.order.dictionary.OutboxStatus;
-import oleborn.order_service.order.domain.OutboxEvent;
+import oleborn.order_service.order.domain.event.OutboxEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
 

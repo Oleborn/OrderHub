@@ -5,6 +5,32 @@ spring:
   profiles:
     active: elk
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      compression-type: gzip
+    consumer:
+      group-id: payment-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+    listener:
+      simple:
+        prefetch: 10
+        concurrency: 3
+        max-concurrency: 10
+        acknowledge-mode: manual          # подтверждение после успешной обработки
+        default-requeue-rejected: false # poison -> DLQ
+        retry:
+          enabled: true
+          initial-interval: 2s
+          max-attempts: 3
+          multiplier: 2.0
+          max-interval: 10s
+
 server:
   port: 8083
 
@@ -25,3 +51,8 @@ management:
           - info
           - prometheus
           - loggers
+
+app:
+  topic:
+    order-create-topic: "order.outbox"
+    payment-events: "payment-events"

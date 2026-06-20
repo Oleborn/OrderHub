@@ -3,7 +3,7 @@
 //import lombok.RequiredArgsConstructor;
 //import lombok.extern.slf4j.Slf4j;
 //import oleborn.order_service.order.config.ProducerRabbitConfig;
-//import oleborn.order_service.order.domain.dto.OrderCreatedEvent;
+//import oleborn.order_service.order.domain.event.OrderCreatedEvent;
 //import org.springframework.amqp.rabbit.connection.CorrelationData;
 //import org.springframework.amqp.rabbit.core.RabbitTemplate;
 //import org.springframework.stereotype.Service;

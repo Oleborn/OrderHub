@@ -9,10 +9,9 @@ import oleborn.order_service.order.dictionary.OrderStatus;
 import oleborn.order_service.order.dictionary.OutboxStatus;
 import oleborn.order_service.order.domain.Order;
 import oleborn.order_service.order.domain.OrderItem;
-import oleborn.order_service.order.domain.OutboxEvent;
+import oleborn.order_service.order.domain.event.OutboxEvent;
 import oleborn.order_service.order.domain.dto.CreateOrderRequestDto;
-import oleborn.order_service.order.domain.dto.OrderCreatedEvent;
-import oleborn.order_service.order.domain.dto.PaymentResponseDto;
+import oleborn.order_service.order.domain.event.OrderCreatedEvent;
 import oleborn.order_service.order.exception.NotFoundOrderException;
 import oleborn.order_service.order.exception.OrderCreationException;
 import oleborn.order_service.order.metrics.annotation.BusinessMetric;
@@ -71,69 +70,41 @@ public class OrderService {
             Order order = new Order(items);
 
             //сначала всегда PENDING, потому что не знаем как закончится
-            order.setStatus(OrderStatus.PENDING);
+            order.setStatus(OrderStatus.AWAITING_PAYMENT);
 
             Order savedOrder = orderRepository.saveAndFlush(order);
 
-            log.info("Заказ {} создан со статусом PENDING", savedOrder.getId());
+            log.info("Заказ {} сохранен с статусом AWAITING_PAYMENT", savedOrder.getId());
 
-//            //синхронный вариант
-//            paymentService.processPaymentFeign(savedOrder);
+            // Сохраняем в outbox
+            String traceId = Span.current().getSpanContext().getTraceId();
+            String spanId = Span.current().getSpanContext().getSpanId();
+            String traceparent = String.format("00-%s-%s-01", traceId, spanId); // формат W3C
 
-            //асинхронный вариант
-            PaymentResponseDto response = paymentService.processPaymentResilience4j(savedOrder).get();
+            OrderCreatedEvent orderCreatedEvent = OrderCreatedEvent.of(
+                    savedOrder.getId(),
+                    MDC.getCopyOfContextMap()
+            );
 
-            if (response.requiresPendingProcessing()) {
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .aggregateType("Order")
+                    .aggregateId(savedOrder.getId().toString())
+                    .eventType("OrderCreatedEvent")
+                    .payload(orderCreatedEvent)
+                    .traceId(traceId)
+                    .spanId(spanId)
+                    .status(OutboxStatus.NEW)
+                    .traceparent(traceparent)
+                    .build();
 
-                orderRepository.save(savedOrder);
+            outboxEventRepository.save(outboxEvent);
+            debeziumMetrics.incrementOutboxCreated();
 
-                log.info("Заказ {} сохранен с статусом PENDING", savedOrder.getId());
-
-            } else if (response.isSuccessful()) {
-
-                savedOrder.setStatus(OrderStatus.PAID);
-                orderRepository.save(savedOrder);
-
-                log.info("Оплата заказа {} успешно проведена", savedOrder.getId());
-
-                // Сохраняем в outbox
-                String traceId = Span.current().getSpanContext().getTraceId();
-                String spanId = Span.current().getSpanContext().getSpanId();
-
-                OrderCreatedEvent orderCreatedEvent = OrderCreatedEvent.of(
-                        savedOrder.getId(),
-                        MDC.getCopyOfContextMap()
-                );
-
-                OutboxEvent outboxEvent = OutboxEvent.builder()
-                        .aggregateType("Order")
-                        .aggregateId(savedOrder.getId().toString())
-                        .eventType("OrderCreatedEvent")
-                        .payload(orderCreatedEvent)
-                        .traceId(traceId)
-                        .spanId(spanId)
-                        .status(OutboxStatus.NEW)
-                        .build();
-
-                outboxEventRepository.save(outboxEvent);
-
-                debeziumMetrics.incrementOutboxCreated();
-
-                log.debug("Отправлено инфо о заказе, id: {}", savedOrder.getId());
-
-            } else {
-                // Бизнес-ошибка (недостаточно средств и т.п.)
-                savedOrder.setStatus(OrderStatus.CANCELLED);
-                orderRepository.save(savedOrder);
-
-                log.warn("Бизнес-ошибка оплаты заказа {}: {}", savedOrder.getId(), response.message());
-            }
+            log.debug("Отправлено инфо о заказе, id: {}", savedOrder.getId());
 
             MDC.put("order_id", savedOrder.getId().toString());
             MDC.put("total_amount", savedOrder.getTotalPrice().toString());
             MDC.put("order_status", savedOrder.getStatus().toString());
-
-            log.debug("Все успешно сохранено");
 
             // Теги добавятся в order.creation span
             Span.current().setAttribute("order.id", savedOrder.getId());
@@ -192,5 +163,44 @@ public class OrderService {
                 Thread.sleep(200);
             }
         }
+    }
+
+    @Transactional
+    public void completeOrder(Long orderId) {
+
+        Order order = orderRepository.findById(orderId).orElseThrow(
+                () -> new OrderCreationException("Order not found: " + orderId)
+        );
+
+        // Проверяем, что заказ в ожидании оплаты
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            log.warn("Order {} is not in AWAITING_PAYMENT state (current: {}), skipping", orderId, order.getStatus());
+            return;
+        }
+
+        order.setStatus(OrderStatus.PAID);
+
+        orderRepository.save(order);
+
+        log.info("Order {} completed (PAID)", orderId);
+    }
+
+    @Transactional
+    public void cancelOrder(Long orderId, String reason) {
+
+        Order order = orderRepository.findById(orderId).orElseThrow(
+                () -> new OrderCreationException("Order not found: " + orderId)
+        );
+
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            log.warn("Order {} is not in AWAITING_PAYMENT state (current: {}), skipping", orderId, order.getStatus());
+            return;
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+
+        orderRepository.save(order);
+
+        log.info("Order {} cancelled due to: {}", orderId, reason);
     }
 }

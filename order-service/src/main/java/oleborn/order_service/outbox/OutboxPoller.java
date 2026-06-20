@@ -4,8 +4,8 @@
 //import lombok.RequiredArgsConstructor;
 //import lombok.extern.slf4j.Slf4j;
 //import oleborn.order_service.order.dictionary.OutboxStatus;
-//import oleborn.order_service.order.domain.OutboxEvent;
-//import oleborn.order_service.order.domain.dto.OrderCreatedEvent;
+//import oleborn.order_service.order.domain.event.OutboxEvent;
+//import oleborn.order_service.order.domain.event.OrderCreatedEvent;
 //import oleborn.order_service.order.producer.KafkaNotificationProducer;
 //import oleborn.order_service.order.repository.OutboxEventRepository;
 //import org.springframework.scheduling.annotation.Scheduled;

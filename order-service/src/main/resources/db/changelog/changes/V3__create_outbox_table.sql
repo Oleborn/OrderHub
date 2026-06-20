@@ -8,7 +8,8 @@ CREATE TABLE outbox_event (
    trace_id VARCHAR(32) NOT NULL,
    span_id VARCHAR(16) NOT NULL,
    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-   processed_at TIMESTAMP WITH TIME ZONE
+   processed_at TIMESTAMP WITH TIME ZONE,
+   traceparent VARCHAR(255)
 );
 
 CREATE INDEX idx_outbox_event_status_created_at ON outbox_event (status, created_at);

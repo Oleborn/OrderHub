@@ -50,6 +50,12 @@ spring:
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: order-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
     producer:
       acks: all                     # подтверждение от всех реплик
       retries: 3
@@ -64,7 +70,8 @@ spring:
 
 app:
   topic:
-    order-create-topic: "order.created"
+    order-create-topic: "order.outbox"
+    payment-events: "payment-events"         # топик для ответов от payment-service
 
 management:
   tracing:

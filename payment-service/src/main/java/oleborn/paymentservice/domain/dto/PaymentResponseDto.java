@@ -1,4 +1,4 @@
-package oleborn.paymentservice.dto;
+package oleborn.paymentservice.domain.dto;
 
 public record PaymentResponseDto(
 
