@@ -2,14 +2,8 @@ package oleborn.order_service.order.client;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import oleborn.order_service.order.domain.dto.NotificationRequest;
-import oleborn.order_service.order.domain.dto.OrderCreatedEvent;
-import org.slf4j.MDC;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor

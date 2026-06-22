@@ -1,10 +1,9 @@
-package oleborn.order_service.order.domain;
+package oleborn.order_service.order.domain.event;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 import oleborn.order_service.order.dictionary.OutboxStatus;
-import oleborn.order_service.order.domain.dto.OrderCreatedEvent;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -57,4 +56,7 @@ public class OutboxEvent {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
     @UpdateTimestamp
     private ZonedDateTime processedAt;
+
+    @Column(name = "traceparent", nullable = false)
+    private String traceparent;
 }

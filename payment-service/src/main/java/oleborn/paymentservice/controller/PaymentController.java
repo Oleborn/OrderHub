@@ -1,10 +1,11 @@
 package oleborn.paymentservice.controller;
 
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import oleborn.paymentservice.dto.PaymentRequestDto;
-import oleborn.paymentservice.dto.PaymentResponseDto;
-import org.springframework.http.HttpStatus;
+import oleborn.paymentservice.domain.dto.PaymentRequestDto;
+import oleborn.paymentservice.domain.dto.PaymentResponseDto;
+import oleborn.paymentservice.service.PaymentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,10 +15,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RestController
 @RequestMapping("/api/v1/payments")
 @Slf4j
+@RequiredArgsConstructor
 public class PaymentController {
 
     private final AtomicBoolean failureMode = new AtomicBoolean(false);
     private final Random random = new Random();
+    private final PaymentService paymentService;
 
     @PostMapping("/process")
     @SneakyThrows
@@ -51,9 +54,6 @@ public class PaymentController {
 
     @GetMapping("/admin/failure-mode")
     public void setFailureMode(@RequestParam boolean enabled) {
-
-        failureMode.set(enabled);
-
-        log.info("Failure mode в Payment Service, переключен на: {}", enabled);
+        paymentService.setFailureMode(enabled);
     }
 }

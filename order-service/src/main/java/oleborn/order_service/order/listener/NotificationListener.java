@@ -2,10 +2,8 @@ package oleborn.order_service.order.listener;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import oleborn.order_service.order.client.NotificationClient;
-import oleborn.order_service.order.domain.dto.OrderCreatedEvent;
-import oleborn.order_service.order.producer.KafkaNotificationProducer;
-import org.springframework.scheduling.annotation.Async;
+import oleborn.order_service.order.domain.event.OrderCreatedEvent;
+import oleborn.order_service.order.messaging.producer.KafkaNotificationProducer;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;

@@ -1,4 +1,4 @@
-package oleborn.order_service.order.domain.dto;
+package oleborn.order_service.order.domain.event;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 

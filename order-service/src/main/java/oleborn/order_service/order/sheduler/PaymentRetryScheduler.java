@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oleborn.order_service.order.dictionary.OrderStatus;
 import oleborn.order_service.order.domain.Order;
-import oleborn.order_service.order.domain.dto.OrderCreatedEvent;
+import oleborn.order_service.order.domain.event.OrderCreatedEvent;
 import oleborn.order_service.order.domain.dto.PaymentResponseDto;
 import oleborn.order_service.order.repository.OrderRepository;
 import oleborn.order_service.order.service.PaymentService;
