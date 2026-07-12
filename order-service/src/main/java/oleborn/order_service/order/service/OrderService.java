@@ -9,16 +9,21 @@ import oleborn.order_service.order.dictionary.OrderStatus;
 import oleborn.order_service.order.dictionary.OutboxStatus;
 import oleborn.order_service.order.domain.Order;
 import oleborn.order_service.order.domain.OrderItem;
+import oleborn.order_service.order.domain.command.CancelOrderCommand;
+import oleborn.order_service.order.domain.command.UpdateOrderStatusCommand;
+import oleborn.order_service.order.domain.event.NotificationEvent;
 import oleborn.order_service.order.domain.event.OutboxEvent;
 import oleborn.order_service.order.domain.dto.CreateOrderRequestDto;
 import oleborn.order_service.order.domain.event.OrderCreatedEvent;
 import oleborn.order_service.order.exception.NotFoundOrderException;
 import oleborn.order_service.order.exception.OrderCreationException;
+import oleborn.order_service.order.messaging.producer.NotificationProducer;
 import oleborn.order_service.order.metrics.annotation.BusinessMetric;
 import oleborn.order_service.order.repository.OrderRepository;
 import oleborn.order_service.order.repository.OutboxEventRepository;
 import oleborn.order_service.outbox.DebeziumMetrics;
 import org.slf4j.MDC;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,9 +37,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final PaymentService paymentService;
     private final OutboxEventRepository outboxEventRepository;
     private final DebeziumMetrics debeziumMetrics;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
 
     private final AtomicBoolean failureMode = new AtomicBoolean(false);
@@ -166,7 +171,9 @@ public class OrderService {
     }
 
     @Transactional
-    public void completeOrder(Long orderId) {
+    public void completeOrder(UpdateOrderStatusCommand command) {
+
+        Long orderId = command.orderId();
 
         Order order = orderRepository.findById(orderId).orElseThrow(
                 () -> new OrderCreationException("Order not found: " + orderId)
@@ -180,13 +187,24 @@ public class OrderService {
 
         order.setStatus(OrderStatus.PAID);
 
-        orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        applicationEventPublisher.publishEvent(
+                NotificationEvent.builder()
+                        .orderId(savedOrder.getId())
+                        .transactionId(command.transactionId())
+                        .status(savedOrder.getStatus().name())
+                        .build()
+        );
 
         log.info("Order {} completed (PAID)", orderId);
     }
 
     @Transactional
-    public void cancelOrder(Long orderId, String reason) {
+    public void cancelOrder(CancelOrderCommand command) {
+
+        Long orderId = command.orderId();
+        String reason = command.reason();
 
         Order order = orderRepository.findById(orderId).orElseThrow(
                 () -> new OrderCreationException("Order not found: " + orderId)
@@ -199,7 +217,15 @@ public class OrderService {
 
         order.setStatus(OrderStatus.CANCELLED);
 
-        orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        applicationEventPublisher.publishEvent(
+                NotificationEvent.builder()
+                        .orderId(savedOrder.getId())
+                        .reason(command.reason())
+                        .status(savedOrder.getStatus().name())
+                        .build()
+        );
 
         log.info("Order {} cancelled due to: {}", orderId, reason);
     }

@@ -14,6 +14,7 @@ import java.util.concurrent.Semaphore;
 @Component
 @Slf4j
 @RequiredArgsConstructor
+@Deprecated
 public class PaymentClient {
 
     private final WebClient paymentWebClient;

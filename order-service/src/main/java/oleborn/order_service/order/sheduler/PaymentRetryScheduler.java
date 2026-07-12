@@ -29,6 +29,7 @@ import java.util.concurrent.TimeoutException;
 @Component
 @Slf4j
 @RequiredArgsConstructor
+@Deprecated
 public class PaymentRetryScheduler {
 
     @Value("${payment.retry.max-attempts:3}")
@@ -89,39 +90,39 @@ public class PaymentRetryScheduler {
      * @see #isOrderExpired(Order) - проверка устаревания заказа
      */
 
-    @Scheduled(
-            fixedDelayString = "${payment.scanner.fixed-delay:30000}",
-            // задержка МЕЖДУ КОНЦОМ предыдущего и НАЧАЛОМ следующего выполнения
-            // выбрана вместо fixedRate чтобы гарантировать, что задачи не накладываются
-
-            initialDelayString = "${payment.scanner.initial-delay:30000}"
-            // задержка перед ПЕРВЫМ запуском после старта приложения
-            // даёт время на полную инициализацию контекста Spring
-    )
-    @Transactional //не забываем для работы с ленивой загрузкой
-    public void scanAndProcessPendingOrders() {
-        log.debug("Старт поиска pending заказов");
-
-        Pageable limit = PageRequest.of(0, batchSize);
-        // Находим все заказы в статусе PENDING
-        List<Order> pendingOrders = orderRepository.findByStatus(OrderStatus.PENDING, limit);
-
-        if (pendingOrders.isEmpty()) {
-            log.debug("Нет pending заказов для обработки");
-            return;
-        }
-
-        log.info("Найдено {} pending заказов", pendingOrders.size());
-
-        // Обрабатываем каждый заказ
-        for (Order order : pendingOrders) {
-            try {
-                processOrder(order);
-            } catch (Exception e) {
-                log.error("Ошибка при обработке заказа {}", order.getId(), e);
-            }
-        }
-    }
+//    @Scheduled(
+//            fixedDelayString = "${payment.scanner.fixed-delay:30000}",
+//            // задержка МЕЖДУ КОНЦОМ предыдущего и НАЧАЛОМ следующего выполнения
+//            // выбрана вместо fixedRate чтобы гарантировать, что задачи не накладываются
+//
+//            initialDelayString = "${payment.scanner.initial-delay:30000}"
+//            // задержка перед ПЕРВЫМ запуском после старта приложения
+//            // даёт время на полную инициализацию контекста Spring
+//    )
+//    @Transactional //не забываем для работы с ленивой загрузкой
+//    public void scanAndProcessPendingOrders() {
+//        log.debug("Старт поиска pending заказов");
+//
+//        Pageable limit = PageRequest.of(0, batchSize);
+//        // Находим все заказы в статусе PENDING
+//        List<Order> pendingOrders = orderRepository.findByStatus(OrderStatus.PENDING, limit);
+//
+//        if (pendingOrders.isEmpty()) {
+//            log.debug("Нет pending заказов для обработки");
+//            return;
+//        }
+//
+//        log.info("Найдено {} pending заказов", pendingOrders.size());
+//
+//        // Обрабатываем каждый заказ
+//        for (Order order : pendingOrders) {
+//            try {
+//                processOrder(order);
+//            } catch (Exception e) {
+//                log.error("Ошибка при обработке заказа {}", order.getId(), e);
+//            }
+//        }
+//    }
 
     private void processOrder(Order order) {
 

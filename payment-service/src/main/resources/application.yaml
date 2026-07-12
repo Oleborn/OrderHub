@@ -54,5 +54,5 @@ management:
 
 app:
   topic:
-    order-create-topic: "order.outbox"
+    payment-commands: "payment-commands"
     payment-events: "payment-events"

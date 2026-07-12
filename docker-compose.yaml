@@ -118,10 +118,11 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
-      test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list" ]
+      test: [ "CMD", "kafka-topics", "--bootstrap-server", "localhost:29092", "--list" ]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -197,6 +198,7 @@ services:
 
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL}
       PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL}
+      BPM_SERVICE_URL: ${BPM_SERVICE_URL}
 
       #kafka
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -294,6 +296,81 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    networks:
+      - orderhub-network
+
+  # ---------------------------------------------------------------------------
+  # BPM Service - оркестратор на Camunda
+  # ---------------------------------------------------------------------------
+  bpm-service:
+    build:
+      context: .
+      dockerfile: bpm-service/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-1.0.0}
+    container_name: bpm_service
+    ports:
+      - "${BPM_SERVICE_PORT:-8089}:8089"   # Порт, на котором будет доступен сервис
+    environment:
+      # Сервер
+      SERVER_PORT: 8089
+
+      # -----------------------------------------------------------------------
+      # Подключение к БД
+      # -----------------------------------------------------------------------
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # -----------------------------------------------------------------------
+      # Настройки Camunda
+      # -----------------------------------------------------------------------
+      CAMUNDA_BPM_ADMIN_USER_ID: ${CAMUNDA_ADMIN_ID:-admin}
+      CAMUNDA_BPM_ADMIN_USER_PASSWORD: ${CAMUNDA_ADMIN_PASSWORD:-admin}
+      CAMUNDA_BPM_DEFAULT_SERIALIZATION_FORMAT: application/json
+      CAMUNDA_BPM_GENERIC_PROPERTIES_PROPERTIES_ENFORCEHISTORYTIMETOLIVE: false
+
+      # -----------------------------------------------------------------------
+      # Настройки Kafka (для команд и событий)
+      # -----------------------------------------------------------------------
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+
+      # Топики (если вы выносите их в переменные)
+      APP_TOPIC_ORDER_EVENTS: order-events
+      APP_TOPIC_PAYMENT_EVENTS: payment-events
+      APP_TOPIC_PAYMENT_COMMANDS: payment-commands
+      APP_TOPIC_ORDER_COMMANDS: order-commands
+      APP_TOPIC_ORDER_EVENTS_OUT: order-events
+
+      # -----------------------------------------------------------------------
+      # Метрики и мониторинг (Prometheus)
+      # -----------------------------------------------------------------------
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics,loggers
+
+      # -----------------------------------------------------------------------
+      # Трассировка (Jaeger)
+      # -----------------------------------------------------------------------
+      MANAGEMENT_TRACING_ENABLED: "true"
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://jaeger:4318/v1/traces
+
+      # -----------------------------------------------------------------------
+      # Профили и окружение
+      # -----------------------------------------------------------------------
+      SPRING_PROFILES_ACTIVE: elk
+      ENVIRONMENT: production
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8089/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - orderhub-network
 

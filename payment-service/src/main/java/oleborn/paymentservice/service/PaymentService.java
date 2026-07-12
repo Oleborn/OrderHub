@@ -2,6 +2,7 @@ package oleborn.paymentservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oleborn.paymentservice.domain.command.ProcessPaymentCommand;
 import oleborn.paymentservice.domain.event.OrderCreatedEvent;
 import oleborn.paymentservice.domain.event.PaymentCompletedEvent;
 import oleborn.paymentservice.domain.event.PaymentFailedEvent;
@@ -26,30 +27,31 @@ public class PaymentService {
      * Для демонстрации используем существующий PaymentController, но можно просто заглушку.
      */
     @Transactional
-    public void processPayment(OrderCreatedEvent event) {
+    public void processPayment(ProcessPaymentCommand command) {
 
         //тут логика оплаты которой пока нет
+        log.info("Processing Payment Command: {}", command);
 
         //Отправляем результат
         if (failureMode.get()) {
             paymentProducer.sendPaymentCompletedEvent(
                     new PaymentCompletedEvent(
-                            event.orderId(),
+                            command.orderId(),
                             "txn_" + System.currentTimeMillis(),
                             "COMPLETED"
                     )
             );
 
-            log.info("Оплата успешна для заказа {}, отправлено PaymentCompletedEvent", event.orderId());
+            log.info("Оплата успешна для заказа {}, отправлено PaymentCompletedEvent", command.orderId());
 
         } else {
             paymentProducer.sendPaymentFailedEvent(
                     new PaymentFailedEvent(
-                            event.orderId(),
+                            command.orderId(),
                             "У сервиса выходной"
                     )
             );
-            log.warn("Оплата не удалась для заказа {}, отправлено PaymentFailedEvent", event.orderId());
+            log.warn("Оплата не удалась для заказа {}, отправлено PaymentFailedEvent", command.orderId());
         }
     }
 

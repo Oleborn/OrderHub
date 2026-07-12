@@ -1,7 +1,6 @@
 package oleborn.order_service.order.service;
 
 import feign.FeignException;
-import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -17,8 +16,6 @@ import oleborn.order_service.order.exception.PaymentFailedException;
 import oleborn.order_service.order.feignclient.PaymentFeignClient;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.annotation.Backoff;
-//import org.springframework.retry.annotation.CircuitBreaker;
-import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.retry.support.RetrySynchronizationManager;
 import org.springframework.stereotype.Service;
@@ -31,6 +28,7 @@ import java.util.concurrent.TimeoutException;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Deprecated
 public class PaymentService {
 
     private final PaymentClient paymentClient;
