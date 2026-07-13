@@ -3,6 +3,7 @@ package oleborn.notificationservice.consumer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oleborn.notificationservice.event.NotificationEvent;
 import oleborn.notificationservice.event.OrderCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -127,8 +128,6 @@ public class NotificationKafkaConsumer {
 
     public void consume(ConsumerRecord<String, byte[]> record, Acknowledgment acknowledgment) {
 
-        log.info("Принято сообщение в консьюмере notification");
-
         try {
             // например, orderId как строка
             byte[] value = record.value();
@@ -140,7 +139,83 @@ public class NotificationKafkaConsumer {
                 throw new IllegalArgumentException("orderId must not be null");
             }
 
-            log.info("Имитация бизнес-логики отправки для orderId={}", event.orderId());
+            log.info("Имитация бизнес-логики отправки сообщения о успешном создании заказа для orderId={}", event.orderId());
+
+            //Ручной коммит offset
+            acknowledgment.acknowledge();
+            log.info("Событие для заказа: {} обработано и оффсет для него сдвинут(acknowledged) ", event.orderId());
+
+        } catch (Exception e) {
+            log.error("Error processing order", e);
+            // Не вызываем acknowledgment – сообщение попадёт в DLT после всех retry
+            throw new RuntimeException("Processing failed", e);
+        }
+    }
+
+    @RetryableTopic(
+            attempts = "3",                                // Общее количество попыток (1 первая + 2 ретрая)
+            backoff = @Backoff(                            // Настройка задержек между попытками
+                    delay = 1000,                          // начальная задержка (мс)
+                    maxDelay = 10000,                      // максимальная задержка (если multiplier>1)
+                    multiplier = 2.0,                      // множитель для экспоненциального роста
+                    random = true                          // jitter (случайное отклонение)
+            ),
+            timeout = "60000",                          // Максимальное время всех попыток (после него -> DLT)
+            retryTopicSuffix = "-retry",                   // Суффикс для ретрай-топиков (по умолчанию "-retry")
+            dltTopicSuffix = ".DLT",                       // Суффикс для Dead Letter Topic (по умолчанию ".dlt")
+            topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE, // Как именовать ретрай-топики:
+            sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC, // Переиспользовать ли один топик для одинаковых задержек
+            exclude = {IllegalArgumentException.class, NullPointerException.class}, // Эти исключения -> сразу в DLT
+            traversingCauses = "true",                     // Анализировать ли причину (cause) исключения при проверке include/exclude
+            dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR, // Всегда ретраить до исчерпания attempts, затем DLT
+            autoCreateTopics = "true",                     // Автоматически создавать ретрай-топики и DLT
+            numPartitions = "1",                           // Количество партиций для создаваемых топиков, делаем 1 потому что топик 1
+            replicationFactor = "1",                       // Фактор репликации (по умолчанию -1 = использовать настройки брокера), делаем 1 потому что топик 1
+            listenerContainerFactory = "kafkaListenerContainerFactory",
+            concurrency = "3"
+    )
+    @KafkaListener(
+            topics = "${app.topic.notification-events}",
+            groupId = "notification-service-group",
+            containerFactory = "kafkaListenerContainerFactory"
+    )
+
+    public void consumeResultProcessOrder(ConsumerRecord<String, byte[]> record, Acknowledgment acknowledgment) {
+
+        try {
+            // например, orderId как строка
+            byte[] value = record.value();
+
+            NotificationEvent event = objectMapper.readValue(value, NotificationEvent.class);
+
+            // Бизнес-валидация
+            if (event.orderId() == null) {
+                throw new IllegalArgumentException("orderId must not be null");
+            }
+
+            if (event.transactionId() != null) {
+                log.info(
+                    """
+                    Отправлено уведомление:
+                    Заказ: {}, успешно обработан.
+                    Статус заказа: {}
+                    Id транзакции: {}
+                    """, event.orderId(),
+                        event.status(),
+                        event.transactionId()
+                );
+            } else {
+                log.info(
+                    """
+                    Отправлено уведомление:
+                    Заказ: {}, не обработан.
+                    Статус заказа: {}
+                    Причина: {}
+                    """, event.orderId(),
+                        event.status(),
+                        event.reason()
+                );
+            }
 
             //Ручной коммит offset
             acknowledgment.acknowledge();

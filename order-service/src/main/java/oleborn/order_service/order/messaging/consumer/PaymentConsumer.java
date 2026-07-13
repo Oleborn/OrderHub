@@ -19,74 +19,73 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @RequiredArgsConstructor
+@Deprecated
 public class PaymentConsumer {
 
-    private final ObjectMapper objectMapper;
-    private final OrderService orderService;
-
-    @RetryableTopic(
-            attempts = "3",
-            backoff = @Backoff(delay = 1000, maxDelay = 10000, multiplier = 2.0, random = true),
-            timeout = "60000",
-            retryTopicSuffix = "-retry",
-            dltTopicSuffix = ".DLT",
-            topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
-            sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC,
-            exclude = {IllegalArgumentException.class, NullPointerException.class},
-            traversingCauses = "true",
-            dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR,
-            autoCreateTopics = "true",
-            numPartitions = "1",
-            replicationFactor = "1",
-            listenerContainerFactory = "kafkaListenerContainerFactory",
-            concurrency = "3",
-            autoStartDltHandler = "true"
-    )
-
-    @KafkaListener(
-            topics = "${app.topic.payment-events}",
-            groupId = "order-service-group",
-            containerFactory = "kafkaListenerContainerFactory"
-    )
-
-    public void handlePaymentEvent(
-            ConsumerRecord<String, byte[]> record,
-            Acknowledgment acknowledgment
-    ) {
-        log.info("Принято сообщение из топика payment-events");
-
-        try {
-            byte[] value = record.value();
-            // Определяем тип события по заголовку или по содержимому
-            // Для простоты будем пробовать десериализовать сначала как PaymentCompletedEvent,
-            // если не получится – пробуем как PaymentFailedEvent.
-            // Но лучше использовать заголовок __TypeId__, который добавляет JsonSerializer.
-            // В нашем случае мы можем положить тип в отдельное поле, или использовать заголовки.
-            // Для демонстрации я покажу упрощённый вариант:
-
-            String json = new String(value);
-
-            if (json.contains("\"transactionId\"")) {
-
-                PaymentCompletedEvent completed = objectMapper.readValue(value, PaymentCompletedEvent.class);
-                orderService.completeOrder(completed.orderId());
-
-            } else if (json.contains("\"reason\"")) {
-
-                PaymentFailedEvent failed = objectMapper.readValue(value, PaymentFailedEvent.class);
-                orderService.cancelOrder(failed.orderId(), failed.reason());
-
-            } else {
-                throw new IllegalArgumentException("Unknown event type");
-            }
-
-            acknowledgment.acknowledge();
-
-        } catch (Exception e) {
-            log.error("Ошибка обработки события оплаты", e);
-            throw new RuntimeException("Payment event processing failed", e);
-        }
-    }
-
-
+//    private final ObjectMapper objectMapper;
+//    private final OrderService orderService;
+//
+//    @RetryableTopic(
+//            attempts = "3",
+//            backoff = @Backoff(delay = 1000, maxDelay = 10000, multiplier = 2.0, random = true),
+//            timeout = "60000",
+//            retryTopicSuffix = "-retry",
+//            dltTopicSuffix = ".DLT",
+//            topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
+//            sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC,
+//            exclude = {IllegalArgumentException.class, NullPointerException.class},
+//            traversingCauses = "true",
+//            dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR,
+//            autoCreateTopics = "true",
+//            numPartitions = "1",
+//            replicationFactor = "1",
+//            listenerContainerFactory = "kafkaListenerContainerFactory",
+//            concurrency = "3",
+//            autoStartDltHandler = "true"
+//    )
+//
+//    @KafkaListener(
+//            topics = "${app.topic.payment-events}",
+//            groupId = "order-service-group",
+//            containerFactory = "kafkaListenerContainerFactory"
+//    )
+//
+//    public void handlePaymentEvent(
+//            ConsumerRecord<String, byte[]> record,
+//            Acknowledgment acknowledgment
+//    ) {
+//        log.info("Принято сообщение из топика payment-events");
+//
+//        try {
+//            byte[] value = record.value();
+//            // Определяем тип события по заголовку или по содержимому
+//            // Для простоты будем пробовать десериализовать сначала как PaymentCompletedEvent,
+//            // если не получится – пробуем как PaymentFailedEvent.
+//            // Но лучше использовать заголовок __TypeId__, который добавляет JsonSerializer.
+//            // В нашем случае мы можем положить тип в отдельное поле, или использовать заголовки.
+//            // Для демонстрации я покажу упрощённый вариант:
+//
+//            String json = new String(value);
+//
+//            if (json.contains("\"transactionId\"")) {
+//
+//                PaymentCompletedEvent completed = objectMapper.readValue(value, PaymentCompletedEvent.class);
+//                orderService.completeOrder(completed.orderId());
+//
+//            } else if (json.contains("\"reason\"")) {
+//
+//                PaymentFailedEvent failed = objectMapper.readValue(value, PaymentFailedEvent.class);
+//                orderService.cancelOrder(failed.orderId(), failed.reason());
+//
+//            } else {
+//                throw new IllegalArgumentException("Unknown event type");
+//            }
+//
+//            acknowledgment.acknowledge();
+//
+//        } catch (Exception e) {
+//            log.error("Ошибка обработки события оплаты", e);
+//            throw new RuntimeException("Payment event processing failed", e);
+//        }
+//    }
 }

@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: bpm-service
+
+  profiles:
+    active: elk
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: "bpm-service-group"
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      compression-type: gzip
+      properties:
+        enable.idempotence: true
+        spring.json.add.type.headers: true
+        max.in.flight.requests.per.connection: 1
+        linger.ms: 5
+
+camunda:
+  bpm:
+    admin-user:
+      id: ${CAMUNDA_ADMIN_ID}
+      password: ${CAMUNDA_ADMIN_PASSWORD}
+    default-serialization-format: application/json
+    generic-properties:
+      properties:
+        enforceHistoryTimeToLive: false
+
+app:
+  topic:
+    order-create-topic: "order.outbox"
+    payment-events: "payment-events"
+    payment-commands: "payment-commands"
+    order-commands: "order-commands"
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - info
+          - prometheus
+          - loggers
+

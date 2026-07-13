@@ -3,6 +3,7 @@ package oleborn.paymentservice.service.consumer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oleborn.paymentservice.domain.command.ProcessPaymentCommand;
 import oleborn.paymentservice.domain.event.OrderCreatedEvent;
 import oleborn.paymentservice.service.PaymentService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -43,7 +44,7 @@ public class PaymentConsumer {
     )
 
     @KafkaListener(
-            topics = "${app.topic.order-create-topic}", // берём из application.yaml
+            topics = "${app.topic.payment-commands}",
             groupId = "payment-service-group",
             containerFactory = "kafkaListenerContainerFactory"
     )
@@ -51,13 +52,13 @@ public class PaymentConsumer {
             ConsumerRecord<String, byte[]> record,
             Acknowledgment acknowledgment
     ) {
-        log.info("Принято сообщение из топика order.outbox");
+        log.info("Принято сообщение из топика payment-events");
 
         try {
             // 1. Десериализуем событие
             byte[] value = record.value();
-            OrderCreatedEvent event = objectMapper.readValue(value, OrderCreatedEvent.class);
-            Long orderId = event.orderId();
+            ProcessPaymentCommand command = objectMapper.readValue(value, ProcessPaymentCommand.class);
+            Long orderId = command.orderId();
 
             // 2. Бизнес-валидация
             if (orderId == null) {
@@ -67,7 +68,7 @@ public class PaymentConsumer {
             log.info("Обработка оплаты для заказа {}", orderId);
 
             // 3. Выполняем оплату (имитация бизнес-логики)
-            paymentService.processPayment(event);
+            paymentService.processPayment(command);
 
             // 4. Подтверждаем offset
             acknowledgment.acknowledge();

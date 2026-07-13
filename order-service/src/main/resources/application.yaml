@@ -72,6 +72,8 @@ app:
   topic:
     order-create-topic: "order.outbox"
     payment-events: "payment-events"         # топик для ответов от payment-service
+    order-commands: "order-commands"
+    notification-events: "notification-events"
 
 management:
   tracing:
