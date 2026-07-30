@@ -291,7 +291,7 @@ public class OrderService {
                 } else {
                     // Ключ есть, но финального ответа нет – значит, другой запрос еще обрабатывает.
                     // Можно подождать и повторить, либо вернуть конфликт.
-                    throw new IdempotencyConflictException(409, "Duplicate request is being processed");
+                    throw new IdempotencyConflictException(409, OrderResponseDto.builder().build());
                 }
             }
         }
