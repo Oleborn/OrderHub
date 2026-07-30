@@ -1,0 +1,7 @@
+CREATE TABLE payments(
+    id BIGSERIAL PRIMARY KEY,
+    order_id BIGSERIAL UNIQUE NOT NULL,
+    transaction_id VARCHAR(255) NOT NULL,
+    status VARCHAR(25) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL
+);

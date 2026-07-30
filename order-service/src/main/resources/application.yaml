@@ -26,6 +26,17 @@ spring:
     enabled: true
     change-log: classpath:/db/changelog/changelog_master.yaml
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
   task:
     scheduling:
       pool:
@@ -115,8 +126,8 @@ server:
 
 logging:
   level:
-#    org.hibernate.SQL: DEBUG
-    root: info
+    org.apache.kafka: WARN
+    org.springframework.kafka.listener: WARN
 
 spring.jooq.sql-dialect: POSTGRES
 

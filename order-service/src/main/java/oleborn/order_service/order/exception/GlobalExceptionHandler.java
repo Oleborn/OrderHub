@@ -24,6 +24,11 @@ public class GlobalExceptionHandler {
 
     }
 
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<String> handleException(IdempotencyConflictException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(ex.getBody());
+    }
+
     @ExceptionHandler(NotFoundOrderException.class)
     public ResponseEntity<ErrorDto> handleException(NotFoundOrderException ex) {
 

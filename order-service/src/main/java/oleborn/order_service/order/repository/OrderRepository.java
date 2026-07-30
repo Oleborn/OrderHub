@@ -1,7 +1,7 @@
 package oleborn.order_service.order.repository;
 
 import oleborn.order_service.order.dictionary.OrderStatus;
-import oleborn.order_service.order.domain.Order;
+import oleborn.order_service.order.domain.entity.Order;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;

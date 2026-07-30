@@ -26,6 +26,15 @@ databaseChangeLog:
         splitStatements: true
         endDelimiter: ;
 
+  - changeSet:
+      id: V4__create_processed_commands_table.sql
+      author: orderhub
+      sqlFile:
+        path: db/changelog/changes/V4__create_processed_commands_table.sql
+        relativeToChangeFile: true
+        splitStatements: true
+        endDelimiter: ;
+
 #  - property:
 #      name: now
 #      value: now()

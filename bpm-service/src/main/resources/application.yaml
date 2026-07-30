@@ -66,3 +66,8 @@ management:
           - prometheus
           - loggers
 
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka.listener: WARN
+

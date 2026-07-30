@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Component("publishCancelOrderCommandDelegate")
@@ -34,6 +35,7 @@ public class PublishCancelOrderCommandDelegate implements JavaDelegate {
         log.info("Publishing CancelOrderCommand for order: {} reason: {}", orderId, reason);
 
         CancelOrderCommand command = CancelOrderCommand.builder()
+                .commandId(UUID.randomUUID())
                 .orderId(orderId)
                 .reason(reason)
                 .build();

@@ -203,6 +203,12 @@ services:
       #kafka
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
 
+      # -----------------------------------------------------------------------
+      # REDIS настройки
+      # -----------------------------------------------------------------------
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -274,6 +280,27 @@ services:
       # Сервер
       SERVER_PORT: 8083
 
+      # -----------------------------------------------------------------------
+      # Подключение к БД (runtime)
+      # -----------------------------------------------------------------------
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}  # Секрет!
+
+      # -----------------------------------------------------------------------
+      # Для миграций и прямых запросов (если нужно внутри приложения)
+      # -----------------------------------------------------------------------
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}           # Секрет!
+
+      # -----------------------------------------------------------------------
+      # JPA настройки
+      # -----------------------------------------------------------------------
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO}  # validate в production
+
       # Метрики для Prometheus (опционально)
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
@@ -289,7 +316,16 @@ services:
       #kafka
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
 
+      # -----------------------------------------------------------------------
+      # REDIS настройки
+      # -----------------------------------------------------------------------
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8083/actuator/health" ]
       interval: 30s
@@ -541,6 +577,18 @@ services:
     networks:
       - orderhub-network
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - orderhub-network
+
 # -------------------------------------------------------------------------------
 # Persistent volumes - данные НЕ теряются при docker-compose down
 # -------------------------------------------------------------------------------
@@ -559,6 +607,8 @@ volumes:
     name: orderhub_filebeat_data
   kafka_data:
     name: orderhub_kafka_data
+  redis_data:
+    name: orderhub_redis_data
 
 # -------------------------------------------------------------------------------
 # Изолированная сеть для сервисов

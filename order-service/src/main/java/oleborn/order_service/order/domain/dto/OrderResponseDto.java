@@ -1,8 +1,8 @@
 package oleborn.order_service.order.domain.dto;
 
 import oleborn.order_service.order.dictionary.OrderStatus;
-import oleborn.order_service.order.domain.Order;
-import oleborn.order_service.order.domain.OrderItem;
+import oleborn.order_service.order.domain.entity.Order;
+import oleborn.order_service.order.domain.entity.OrderItem;
 
 import java.math.BigDecimal;
 import java.time.Instant;
