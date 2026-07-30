@@ -1,13 +1,15 @@
 package oleborn.order_service.order.domain.dto;
 
+import lombok.Builder;
 import oleborn.order_service.order.dictionary.OrderStatus;
-import oleborn.order_service.order.domain.Order;
-import oleborn.order_service.order.domain.OrderItem;
+import oleborn.order_service.order.domain.entity.Order;
+import oleborn.order_service.order.domain.entity.OrderItem;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+@Builder
 public record OrderResponseDto(
 
         Long id,

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Component("publishUpdateOrderStatusCommandDelegate")
@@ -26,11 +27,10 @@ public class PublishUpdateOrderStatusCommandDelegate implements JavaDelegate {
         String transactionId = (String) execution.getVariable("transactionId");
         String traceparent = (String) execution.getVariable("traceparent");
 
-        log.info("traceparent!!! {}", traceparent);
-
         log.info("Publishing UpdateOrderStatusCommand (PAID) for order: {}", orderId);
 
         UpdateOrderStatusCommand command = UpdateOrderStatusCommand.builder()
+                .commandId(UUID.randomUUID())
                 .orderId(orderId)
                 .transactionId(transactionId)
                 .newStatus("PAID")

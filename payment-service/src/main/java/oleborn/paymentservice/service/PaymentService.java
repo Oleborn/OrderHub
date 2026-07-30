@@ -2,62 +2,93 @@ package oleborn.paymentservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oleborn.paymentservice.dictionary.PaymentStatus;
 import oleborn.paymentservice.domain.command.ProcessPaymentCommand;
+import oleborn.paymentservice.domain.entity.Payment;
 import oleborn.paymentservice.domain.event.PaymentCompletedEvent;
 import oleborn.paymentservice.domain.event.PaymentFailedEvent;
 import oleborn.paymentservice.messaging.producer.PaymentProducer;
+import oleborn.paymentservice.repository.PaymentRepository;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.time.Duration;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentService {
 
-    private final AtomicBoolean failureMode = new AtomicBoolean(true);
-
     private final PaymentProducer paymentProducer;
+    private final PaymentRepository paymentRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    /**
-     * Имитация бизнес-логики оплаты.
-     * Здесь может быть вызов внешнего платёжного шлюза, работа с БД и т.д.
-     * Для демонстрации используем существующий PaymentController, но можно просто заглушку.
-     */
     @Transactional
     public void processPayment(ProcessPaymentCommand command) {
 
-        //тут логика оплаты которой пока нет
-        log.info("Processing Payment Command: {}", command);
+        String lockKey = "payment:order:" + command.orderId();
 
-        //Отправляем результат
-        if (failureMode.get()) {
+        try {
+
+            Boolean locked = redisTemplate.opsForValue()
+                    .setIfAbsent(
+                            lockKey,
+                            "processing",
+                            Duration.ofHours(24)
+                    );
+
+            log.info("Redis обработал блокировку, результат: {}", locked);
+
+
+            if (Boolean.FALSE.equals(locked)) {
+                log.info("Заказ {} уже обрабатывается или обработан (Redis), пропускаем", command.orderId());
+                return;
+            }
+
+            Optional<Payment> existing = paymentRepository.findByOrderId(command.orderId());
+
+            //Проверка в БД (защита от дублей, если Redis потерял ключ)
+            if (existing.isPresent()) {
+                log.info("Платёж для заказа {} уже обработан (БД), пропускаем повтор", command.orderId());
+                return;
+            }
+
+            String transactionId = "txn_" + System.currentTimeMillis();
+
+            Payment record = Payment.builder()
+                    .orderId(command.orderId())
+                    .transactionId(transactionId)
+                    .status(PaymentStatus.COMPLETED)
+                    .build();
+
+            paymentRepository.saveAndFlush(record);
+
             paymentProducer.sendPaymentCompletedEvent(
                     new PaymentCompletedEvent(
                             command.orderId(),
-                            "txn_" + System.currentTimeMillis(),
-                            "COMPLETED"
-                    )
+                            transactionId,
+                            PaymentStatus.COMPLETED.name())
             );
 
-            log.info("Оплата успешна для заказа {}, отправлено PaymentCompletedEvent", command.orderId());
+        } catch (DataIntegrityViolationException e) {
 
-        } else {
+            // Гонка на уровне БД – кто-то другой успел сохранить
+            log.warn("Платёж для заказа {} уже создан параллельно, пропускаем", command.orderId());
+            redisTemplate.delete(lockKey); // удаляем ключ, чтобы не блокировать
+
+        } catch (Exception ex) {
+
+            // Любая другая ошибка – удаляем ключ, чтобы можно было повторить
+            redisTemplate.delete(lockKey);
+
+            log.error("Ошибка обработки платежа для заказа {}", command.orderId(), ex);
+
             paymentProducer.sendPaymentFailedEvent(
-                    new PaymentFailedEvent(
-                            command.orderId(),
-                            "У сервиса выходной"
-                    )
+                    new PaymentFailedEvent(command.orderId(), ex.getMessage())
             );
-            log.warn("Оплата не удалась для заказа {}, отправлено PaymentFailedEvent", command.orderId());
         }
-    }
-
-    public void setFailureMode(boolean enabled) {
-
-        failureMode.set(enabled);
-
-        log.info("Failure mode в Payment Service, переключен на: {}", enabled);
     }
 }

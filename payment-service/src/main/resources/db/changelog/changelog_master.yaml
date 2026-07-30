@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: V1__create_table_payments.sql
+      author: orderhub
+      sqlFile:
+          path: db/changelog/changes/V1__create_table_payments.sql
+          relativeToChangeFile: true
+          splitStatements: true
+          endDelimiter: ;

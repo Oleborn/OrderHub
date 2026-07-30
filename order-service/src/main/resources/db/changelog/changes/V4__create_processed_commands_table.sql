@@ -1,0 +1,4 @@
+CREATE TABLE processed_commands (
+   command_id UUID PRIMARY KEY,
+   processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

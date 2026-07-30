@@ -1,5 +1,6 @@
 package oleborn.order_service.order.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.observation.annotation.Observed;
 import io.opentelemetry.api.trace.Span;
 import lombok.RequiredArgsConstructor;
@@ -7,27 +8,35 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import oleborn.order_service.order.dictionary.OrderStatus;
 import oleborn.order_service.order.dictionary.OutboxStatus;
-import oleborn.order_service.order.domain.Order;
-import oleborn.order_service.order.domain.OrderItem;
 import oleborn.order_service.order.domain.command.CancelOrderCommand;
 import oleborn.order_service.order.domain.command.UpdateOrderStatusCommand;
-import oleborn.order_service.order.domain.event.NotificationEvent;
-import oleborn.order_service.order.domain.event.OutboxEvent;
+import oleborn.order_service.order.domain.dto.CachedResponse;
 import oleborn.order_service.order.domain.dto.CreateOrderRequestDto;
+import oleborn.order_service.order.domain.dto.OrderResponseDto;
+import oleborn.order_service.order.domain.entity.Order;
+import oleborn.order_service.order.domain.entity.OrderItem;
+import oleborn.order_service.order.domain.entity.ProcessedCommand;
+import oleborn.order_service.order.domain.event.NotificationEvent;
 import oleborn.order_service.order.domain.event.OrderCreatedEvent;
+import oleborn.order_service.order.domain.event.OutboxEvent;
+import oleborn.order_service.order.exception.IdempotencyConflictException;
 import oleborn.order_service.order.exception.NotFoundOrderException;
 import oleborn.order_service.order.exception.OrderCreationException;
-import oleborn.order_service.order.messaging.producer.NotificationProducer;
 import oleborn.order_service.order.metrics.annotation.BusinessMetric;
 import oleborn.order_service.order.repository.OrderRepository;
 import oleborn.order_service.order.repository.OutboxEventRepository;
+import oleborn.order_service.order.repository.ProcessedCommandRepository;
 import oleborn.order_service.outbox.DebeziumMetrics;
 import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -40,11 +49,14 @@ public class OrderService {
     private final OutboxEventRepository outboxEventRepository;
     private final DebeziumMetrics debeziumMetrics;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ProcessedCommandRepository processedCommandRepository;
+    private final IdempotencyService idempotencyService;
+    private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
 
 
     private final AtomicBoolean failureMode = new AtomicBoolean(false);
     private final Random random = new Random();
-
 
     //timeout для защиты от долгих SQL-запросов или залипаний на уровне БД, если метод выполняется дольше 5 секунд — транзакция откатится
     //не контролирует вызовы внешних сервисов, только бд
@@ -55,9 +67,11 @@ public class OrderService {
     )
     @Observed(name = "order.creation", contextualName = "create-order")
     @SneakyThrows
-    public Order createOrder(CreateOrderRequestDto request) {
+    public Order createOrder(CreateOrderRequestDto request, String idempotencyKey) {
 
-        log.debug("В метод createOrder получен запрос: {}", request);
+        log.debug("В метод createOrder получен запрос: {}, с idempotencyKey: {}", request, idempotencyKey);
+
+        checkIdempotencyKey(idempotencyKey);
 
         try {
 
@@ -114,11 +128,20 @@ public class OrderService {
             // Теги добавятся в order.creation span
             Span.current().setAttribute("order.id", savedOrder.getId());
 
+            saveResponseWithIdempotencyKey(idempotencyKey, savedOrder);
+
             return savedOrder;
 
         } catch (Exception e) {
+
             Throwable cause = e.getCause();
+
             log.error("Ошибка при оформлении заказа {}", cause.getMessage());
+
+            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+                redisTemplate.delete(idempotencyKey);
+            }
+
             throw new OrderCreationException("Error: " + cause.getMessage());
         } finally {
             MDC.remove("order_id");
@@ -173,6 +196,11 @@ public class OrderService {
     @Transactional
     public void completeOrder(UpdateOrderStatusCommand command) {
 
+        if (processedCommandRepository.existsById(command.commandId())) {
+            log.info("Команда {} уже обработана, пропускаем", command.commandId());
+            return;
+        }
+
         Long orderId = command.orderId();
 
         Order order = orderRepository.findById(orderId).orElseThrow(
@@ -197,11 +225,22 @@ public class OrderService {
                         .build()
         );
 
+        processedCommandRepository.save(
+                ProcessedCommand.builder()
+                        .commandId(command.commandId())
+                        .build()
+        );
+
         log.info("Order {} completed (PAID)", orderId);
     }
 
     @Transactional
     public void cancelOrder(CancelOrderCommand command) {
+
+        if (processedCommandRepository.existsById(command.commandId())) {
+            log.info("Команда {} уже обработана, пропускаем", command.commandId());
+            return;
+        }
 
         Long orderId = command.orderId();
         String reason = command.reason();
@@ -228,5 +267,50 @@ public class OrderService {
         );
 
         log.info("Order {} cancelled due to: {}", orderId, reason);
+
+        processedCommandRepository.save(
+                ProcessedCommand.builder()
+                        .commandId(command.commandId())
+                        .build()
+        );
+    }
+
+    private void checkIdempotencyKey(String idempotencyKey) {
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+
+            Boolean locked = redisTemplate.opsForValue()
+                    .setIfAbsent(idempotencyKey, "processing", Duration.ofMinutes(5));
+
+            if (Boolean.FALSE.equals(locked)) {
+                // Ключ уже существует – возможно, обработка уже идет или завершена.
+                // Проверяем, есть ли финальный ответ.
+                Optional<CachedResponse> cached = idempotencyService.getResponse(idempotencyKey);
+                if (cached.isPresent()) {
+                    throw new IdempotencyConflictException(cached.get().status(), cached.get().body());
+                } else {
+                    // Ключ есть, но финального ответа нет – значит, другой запрос еще обрабатывает.
+                    // Можно подождать и повторить, либо вернуть конфликт.
+                    throw new IdempotencyConflictException(409, OrderResponseDto.builder().build());
+                }
+            }
+        }
+    }
+
+
+    @SneakyThrows
+    private void saveResponseWithIdempotencyKey(String idempotencyKey, Order order) {
+
+        //Сохраняем успешный ответ в Redis (ТОЛЬКО если ключ был передан)
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+
+            OrderResponseDto responseDto = OrderResponseDto.from(order);
+
+            String responseBody = objectMapper.writeValueAsString(responseDto);
+
+            idempotencyService.saveResponse(idempotencyKey, 201, responseBody);
+
+            log.info("Idempotency key {} saved with status 201", idempotencyKey);
+        }
     }
 }

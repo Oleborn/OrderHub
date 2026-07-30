@@ -1,6 +1,7 @@
 package oleborn.order_service.order.exception;
 
 import oleborn.order_service.order.domain.dto.ErrorDto;
+import oleborn.order_service.order.domain.dto.OrderResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -22,6 +23,11 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest().body(new ErrorDto(ex.getStatusCode().value(), "Validation Failed", errors));
 
+    }
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<OrderResponseDto> handleException(IdempotencyConflictException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(ex.getBody());
     }
 
     @ExceptionHandler(NotFoundOrderException.class)

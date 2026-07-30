@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import oleborn.order_service.order.domain.dto.CreateOrderRequestDto;
 import oleborn.order_service.order.domain.dto.OrderResponseDto;
 import oleborn.order_service.order.service.OrderService;
-import oleborn.order_service.order.domain.Order;
+import oleborn.order_service.order.domain.entity.Order;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,9 +20,10 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<OrderResponseDto> createOrder(
-            @Valid @RequestBody CreateOrderRequestDto request
+            @Valid @RequestBody CreateOrderRequestDto request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
     ) {
-        Order order = orderService.createOrder(request);
+        Order order = orderService.createOrder(request, idempotencyKey);
         OrderResponseDto response = OrderResponseDto.from(order);
 
         return ResponseEntity.created(URI.create("/orders/" + order.getId()))
