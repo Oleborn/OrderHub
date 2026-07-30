@@ -3,10 +3,9 @@ package oleborn.paymentservice.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oleborn.paymentservice.domain.command.ProcessPaymentCommand;
-import oleborn.paymentservice.domain.event.OrderCreatedEvent;
 import oleborn.paymentservice.domain.event.PaymentCompletedEvent;
 import oleborn.paymentservice.domain.event.PaymentFailedEvent;
-import oleborn.paymentservice.service.producer.PaymentProducer;
+import oleborn.paymentservice.messaging.producer.PaymentProducer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

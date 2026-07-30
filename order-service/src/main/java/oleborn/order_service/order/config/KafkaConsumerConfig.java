@@ -12,6 +12,9 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.converter.MappingJacksonParameterizedConverter;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.messaging.converter.SmartMessageConverter;
 
 import java.util.HashMap;
@@ -45,7 +48,7 @@ public class KafkaConsumerConfig {
      * @return ConsumerFactory для работы с ключами String и значениями byte[]
      */
     @Bean
-    public ConsumerFactory<String, byte[]> consumerFactory() {
+    public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
 
         // Адреса брокеров Kafka (из YAML)
@@ -60,11 +63,19 @@ public class KafkaConsumerConfig {
         // Отключаем авто-коммит offset — будем подтверждать вручную после успешной обработки
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
-        // Десериализатор для ключа (обычно String, например, orderId)
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
 
-        // Десериализатор для значения — принимаем сырой массив байт
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+
+        props.put(JsonDeserializer.TYPE_MAPPINGS,
+                """ 
+                cancelOrderCommand:oleborn.order_service.order.domain.command.CancelOrderCommand,
+                updateOrderStatusCommand:oleborn.order_service.order.domain.command.UpdateOrderStatusCommand
+                """);
+
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "oleborn.order_service.order.domain");
 
         // При необходимости здесь можно добавить дополнительные свойства:
         // - MAX_POLL_RECORDS_CONFIG (количество записей за один вызов poll)
@@ -82,8 +93,8 @@ public class KafkaConsumerConfig {
      * @return фабрика, которую будет использовать @KafkaListener
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, byte[]> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, byte[]> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
 
         // Ручное подтверждение: сообщение должно быть подтверждено через Acknowledgment.acknowledge()

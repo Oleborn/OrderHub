@@ -25,8 +25,6 @@ public class PublishCancelOrderCommandDelegate implements JavaDelegate {
         Long orderId = (Long) execution.getVariable("orderId");
         String traceparent = (String) execution.getVariable("traceparent");
 
-        log.info("traceparent!!! {}", traceparent);
-
         // Если есть причина отмены – можно получить из переменной, иначе дефолтная
         String reason = (String) execution.getVariable("failureReason");
         if (reason == null) {

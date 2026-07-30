@@ -57,7 +57,6 @@ spring:
 
 app:
   topic:
-    order-create-topic: "order.outbox"
     notification-events: "notification-events"
 
 server:

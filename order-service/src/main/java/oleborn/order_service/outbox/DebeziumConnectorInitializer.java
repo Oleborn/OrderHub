@@ -12,6 +12,6 @@ public class DebeziumConnectorInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        kafkaConnectService.createOutboxConnectorIfNotExists();
+        kafkaConnectService.applyOutboxConnectorConfig();
     }
 }

@@ -63,6 +63,14 @@ scrape_configs:
           application: 'payment-service'   # Имя приложения (для фильтрации)
           environment: 'production'             # Окружение (prod/staging/dev)
 
+  - job_name: 'bpm-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'bpm-service:8089' ]
+        labels:
+          application: 'bpm-service'   # Имя приложения (для фильтрации)
+          environment: 'production'             # Окружение (prod/staging/dev)
+
   - job_name: 'elasticsearch'
     static_configs:
       - targets: [ 'elasticsearch-exporter:9114' ]
