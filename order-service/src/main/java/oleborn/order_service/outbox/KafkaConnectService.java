@@ -54,27 +54,22 @@ public class KafkaConnectService {
         this.dbPassword = dbPassword;
     }
 
-    public void createOutboxConnectorIfNotExists() {
-        String url = connectUrl + "/connectors";
-
-        if (connectorExists(connectorName)) {
-            log.info("Connector '{}' already exists, skipping creation", connectorName);
-            return;
-        }
-
+    public void applyOutboxConnectorConfig() {
+        String url = connectUrl + "/connectors/" + connectorName + "/config";
         Map<String, String> config = buildDebeziumConfig();
-        HttpEntity<Map<String, Object>> request = buildRequest(connectorName, config);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, String>> request = new HttpEntity<>(config, headers);
 
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
-            log.info("Connector created successfully: {}", response.getBody());
+            ResponseEntity<String> response =
+                    restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+            log.info("Connector config applied (создан или обновлён): {}", response.getBody());
         } catch (HttpClientErrorException e) {
-            if (e.getStatusCode() == HttpStatus.CONFLICT) {
-                log.info("Connector already exists (409 Conflict) – idempotency check passed");
-            } else {
-                log.error("Failed to create connector: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString(), e);
-                throw new RuntimeException("Failed to create Debezium connector", e);
-            }
+            log.error("Failed to apply connector config: status={}, body={}",
+                    e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new RuntimeException("Failed to configure Debezium connector", e);
         }
     }
 
@@ -127,7 +122,7 @@ public class KafkaConnectService {
         // Имя целевого топика, в который будет отправлено сообщение (статический топик)
         config.put("transforms.outbox.route.topic.replacement", outboxRouteTopic);
         // Дополнительные поля из таблицы outbox, которые нужно положить в заголовки Kafka-сообщения.
-        config.put("transforms.outbox.table.fields.additional.placement", "eventtype:header,traceparent:header");
+        config.put("transforms.outbox.table.fields.additional.placement", "eventtype:header:__TypeId__,traceparent:header:traceparent");
         // Раскрывать JSON-поле payload как тело сообщения, а не как вложенную строку.
         // Если true, сообщение в Kafka будет чистым JSON из payload, без лишней обёртки.
         config.put("transforms.outbox.table.expand.json.payload", "true");

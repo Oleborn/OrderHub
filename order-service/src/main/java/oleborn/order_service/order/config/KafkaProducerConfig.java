@@ -45,6 +45,10 @@ public class KafkaProducerConfig {
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 120000);
+        props.put(JsonSerializer.TYPE_MAPPINGS,
+                """
+                notificationEvent:oleborn.order_service.order.domain.event.NotificationEvent
+                """);
         return props;
     }
 

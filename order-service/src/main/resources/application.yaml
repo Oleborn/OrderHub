@@ -35,19 +35,6 @@ spring:
         await-termination: true
         await-termination-period: 60s
 
-    # Publisher
-    publisher-confirm-type: correlated   # асинхронные подтверждения с корреляцией
-    publisher-returns: true              # возвращать недоставленные сообщения
-
-    template:
-      mandatory: true                    # требовать доставки в очередь
-      retry:
-        enabled: true
-        initial-interval: 1s
-        max-attempts: 3
-        multiplier: 2.0
-        max-interval: 10s
-
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -71,7 +58,6 @@ spring:
 app:
   topic:
     order-create-topic: "order.outbox"
-    payment-events: "payment-events"         # топик для ответов от payment-service
     order-commands: "order-commands"
     notification-events: "notification-events"
 
@@ -134,10 +120,6 @@ logging:
 
 spring.jooq.sql-dialect: POSTGRES
 
-url:
-  notification-service: ${NOTIFICATION_SERVICE_URL}
-  payment-service: ${PAYMENT_SERVICE_URL}
-
 resilience4j:
   retry:
     retryAspectOrder: 2
@@ -149,7 +131,6 @@ resilience4j:
         exponentialMaxWaitDuration: 10s
         randomizedWaitFactor: 0.3
         retryExceptions:
-          - feign.FeignException
           - org.springframework.web.reactive.function.client.WebClientResponseException
           - oleborn.order_service.order.exception.PaymentFailedException
 
@@ -208,16 +189,6 @@ resilience4j:
         baseConfig: default              # наследовать настройки из default
         maxConcurrentCalls: 5            # только 5 одновременных вызовов к платежам
         maxWaitDuration: 0               # не ждать, сразу отказ
-
-payment:
-  retry:
-    max-attempts: 3
-    timeout: 30
-    batch-size: 100  # Максимум 50 заказов за один запуск сканера
-scheduling:
-  payment-scanner:
-    fixed-delay: 30000  # 30 секунд между запусками
-    initial-delay: 30000
 
 debezium:
   connector:

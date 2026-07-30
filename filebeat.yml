@@ -112,6 +112,8 @@ processors:
                 container.name: "notification_service"
             - equals:
                 container.name: "payment-service"
+            - equals:
+                container.name: "bpm-service"
       # Условие: оставляем только события от указанных контейнеров.
       #
       # Другие возможные условия (все реально работают):
