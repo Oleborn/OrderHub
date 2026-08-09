@@ -23,17 +23,15 @@ public class OrderController {
             @Valid @RequestBody CreateOrderRequestDto request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
     ) {
-        Order order = orderService.createOrder(request, idempotencyKey);
-        OrderResponseDto response = OrderResponseDto.from(order);
+        OrderResponseDto response = orderService.createOrder(request, idempotencyKey);
 
-        return ResponseEntity.created(URI.create("/orders/" + order.getId()))
+        return ResponseEntity.created(URI.create("/orders/" + response.id()))
                 .body(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponseDto> getOrderWithItems(@PathVariable Long id) {
-        Order order = orderService.getOrderWithItems(id);
-        OrderResponseDto response = OrderResponseDto.from(order);
+        OrderResponseDto response = orderService.getOrderWithItems(id);
         return ResponseEntity.ok(response);
     }
 
