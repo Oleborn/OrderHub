@@ -66,6 +66,12 @@ spring:
         max.in.flight.requests.per.connection: 1   # порядок сообщений
         linger.ms: 5                # небольшой батчинг
 
+caffeine:
+  order:
+    initialCapacity: 16          # начальный размер хеш-таблицы
+    maximumSize: 1000            # максимум записей
+    expireAfterWriteMinutes: 1   # TTL = 1 минута
+
 app:
   topic:
     order-create-topic: "order.outbox"
@@ -167,6 +173,14 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 3
         automaticTransitionFromOpenToHalfOpenEnabled: true
     instances:
+      redisCache:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
       paymentService:
         baseConfig: default            # наследуем всё из default
         slidingWindowSize: 10          # переопределяем только размер окна

@@ -6,6 +6,7 @@ import io.opentelemetry.api.trace.Span;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import oleborn.order_service.order.cache.OrderCacheService;
 import oleborn.order_service.order.dictionary.OrderStatus;
 import oleborn.order_service.order.dictionary.OutboxStatus;
 import oleborn.order_service.order.domain.command.CancelOrderCommand;
@@ -20,7 +21,6 @@ import oleborn.order_service.order.domain.event.NotificationEvent;
 import oleborn.order_service.order.domain.event.OrderCreatedEvent;
 import oleborn.order_service.order.domain.event.OutboxEvent;
 import oleborn.order_service.order.exception.IdempotencyConflictException;
-import oleborn.order_service.order.exception.NotFoundOrderException;
 import oleborn.order_service.order.exception.OrderCreationException;
 import oleborn.order_service.order.metrics.annotation.BusinessMetric;
 import oleborn.order_service.order.repository.OrderRepository;
@@ -29,7 +29,6 @@ import oleborn.order_service.order.repository.ProcessedCommandRepository;
 import oleborn.order_service.outbox.DebeziumMetrics;
 import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,13 +52,11 @@ public class OrderService {
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> redisTemplate;
-
+    private final OrderCacheService orderCacheService;
 
     private final AtomicBoolean failureMode = new AtomicBoolean(false);
     private final Random random = new Random();
 
-    //timeout для защиты от долгих SQL-запросов или залипаний на уровне БД, если метод выполняется дольше 5 секунд — транзакция откатится
-    //не контролирует вызовы внешних сервисов, только бд
     @Transactional(timeout = 30)
     @BusinessMetric(
             value = "orders.created",
@@ -67,11 +64,11 @@ public class OrderService {
     )
     @Observed(name = "order.creation", contextualName = "create-order")
     @SneakyThrows
-    public Order createOrder(CreateOrderRequestDto request, String idempotencyKey) {
+    public OrderResponseDto createOrder(CreateOrderRequestDto request, String idempotencyKey) {
 
         log.debug("В метод createOrder получен запрос: {}, с idempotencyKey: {}", request, idempotencyKey);
 
-        checkIdempotencyKey(idempotencyKey);
+//        checkIdempotencyKey(idempotencyKey);
 
         try {
 
@@ -128,9 +125,9 @@ public class OrderService {
             // Теги добавятся в order.creation span
             Span.current().setAttribute("order.id", savedOrder.getId());
 
-            saveResponseWithIdempotencyKey(idempotencyKey, savedOrder);
+//            saveResponseWithIdempotencyKey(idempotencyKey, savedOrder);
 
-            return savedOrder;
+            return OrderResponseDto.from(order);
 
         } catch (Exception e) {
 
@@ -155,17 +152,11 @@ public class OrderService {
             value = "orders.retrieved",
             tags = {"operation=get", "type=read"}
     )
-    public Order getOrderWithItems(Long id) {
+    public OrderResponseDto getOrderWithItems(Long id) {
 
         log.debug("В метод getOrderWithItems получен запрос поиска order по id: {}", id);
 
-        Order order = orderRepository.findWithItemsById(id).orElseThrow(
-                () -> new NotFoundOrderException("Order not found")
-        );
-
-        log.debug("Результат успешно найден");
-
-        return order;
+        return orderCacheService.getOrder(id);
     }
 
     public void setFailureMode(boolean enabled) {
@@ -296,7 +287,6 @@ public class OrderService {
             }
         }
     }
-
 
     @SneakyThrows
     private void saveResponseWithIdempotencyKey(String idempotencyKey, Order order) {
