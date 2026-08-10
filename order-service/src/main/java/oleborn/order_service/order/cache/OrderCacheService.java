@@ -81,6 +81,7 @@ public class OrderCacheService {
         // Если в кэше нет – инкрементируем промахи
         cacheMissCounter.increment();
 
+
         log.debug(
                 "Redis cache miss for order {}",
                 id

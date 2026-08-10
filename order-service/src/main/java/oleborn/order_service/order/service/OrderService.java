@@ -6,8 +6,6 @@ import io.opentelemetry.api.trace.Span;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import oleborn.order_service.order.cache.CaffeineOrderCacheService;
-import oleborn.order_service.order.cache.OrderCacheMapService;
 import oleborn.order_service.order.cache.OrderCacheService;
 import oleborn.order_service.order.dictionary.OrderStatus;
 import oleborn.order_service.order.dictionary.OutboxStatus;
@@ -70,7 +68,7 @@ public class OrderService {
 
         log.debug("В метод createOrder получен запрос: {}, с idempotencyKey: {}", request, idempotencyKey);
 
-        //checkIdempotencyKey(idempotencyKey);
+//        checkIdempotencyKey(idempotencyKey);
 
         try {
 
