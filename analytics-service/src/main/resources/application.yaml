@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: analytics-service
+  profiles:
+    active: elk
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    enabled: true
+    change-log: classpath:/db/changelog/changelog_master.yaml
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: analytics-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+app:
+  topic:
+    order-create-topic: "order.outbox"
+    payment-events: "payment-events"
+    notification-events: "notification-events"
+
+server:
+  port: 8090
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - info
+          - prometheus
+          - loggers
+  metrics:
+    distribution:
+      percentiles-histogram:
+        all: true
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN
+    oleborn.analyticsservice: DEBUG

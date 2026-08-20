@@ -30,6 +30,7 @@
         <module>notification-service</module>
         <module>payment-service</module>
         <module>bpm-service</module>
+        <module>analytics-service</module>
     </modules>
 
     <dependencyManagement>

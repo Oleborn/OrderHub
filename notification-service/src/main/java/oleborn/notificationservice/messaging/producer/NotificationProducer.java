@@ -1,10 +1,8 @@
-package oleborn.paymentservice.messaging.producer;
+package oleborn.notificationservice.messaging.producer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import oleborn.paymentservice.domain.event.PaymentCompletedEvent;
-import oleborn.paymentservice.domain.event.PaymentFailedEvent;
-import oleborn.paymentservice.domain.event.PaymentStartedEvent;
+import oleborn.notificationservice.event.NotificationSentEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -15,25 +13,15 @@ import java.util.concurrent.CompletableFuture;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class PaymentProducer {
+public class NotificationProducer {
 
-    @Value("${app.topic.payment-events}")
-    private String paymentEventsTopic;
+    @Value("${app.topic.notification-events}")
+    private String notificationEventsTopic;
 
-    // Используем надёжный продюсер (primary)
     private final KafkaTemplate<String, Object> reliableKafkaTemplate;
 
-    public void sendPaymentCompletedEvent(PaymentCompletedEvent event) {
-        //Все события для одного orderId будут попадать в одну партицию → сохраняется порядок событий по заказу
-        send(paymentEventsTopic, String.valueOf(event.orderId()), event);
-    }
-
-    public void sendPaymentFailedEvent(PaymentFailedEvent event) {
-        send(paymentEventsTopic, String.valueOf(event.orderId()), event);
-    }
-
-    public void sendPaymentStartedEvent(PaymentStartedEvent event) {
-        send(paymentEventsTopic, String.valueOf(event.orderId()), event);
+    public void sendPaymentCompletedEvent(NotificationSentEvent event) {
+        send(notificationEventsTopic, String.valueOf(event.orderId()), event);
     }
 
     private void send(String topic, String key, Object event) {
@@ -45,15 +33,13 @@ public class PaymentProducer {
         future.whenComplete((result, ex) -> {
             if (ex == null) {
                 log.info("Событие отправлено в topic: {}, partition: {}, offset: {}",
-                        paymentEventsTopic,
+                        notificationEventsTopic,
                         result.getRecordMetadata().partition(),
                         result.getRecordMetadata().offset()
                 );
             } else {
                 log.error("Ошибка отправки события по orderId: {}", key, ex);
-                // Здесь можно сохранить в outbox
             }
         });
     }
-
 }

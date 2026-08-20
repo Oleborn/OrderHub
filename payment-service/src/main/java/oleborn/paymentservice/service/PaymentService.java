@@ -7,6 +7,7 @@ import oleborn.paymentservice.domain.command.ProcessPaymentCommand;
 import oleborn.paymentservice.domain.entity.Payment;
 import oleborn.paymentservice.domain.event.PaymentCompletedEvent;
 import oleborn.paymentservice.domain.event.PaymentFailedEvent;
+import oleborn.paymentservice.domain.event.PaymentStartedEvent;
 import oleborn.paymentservice.messaging.producer.PaymentProducer;
 import oleborn.paymentservice.repository.PaymentRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 
 @Service
@@ -42,6 +44,13 @@ public class PaymentService {
 
             log.info("Redis обработал блокировку, результат: {}", locked);
 
+            //публикуем старт процесса оплаты
+            paymentProducer.sendPaymentStartedEvent(
+                    new PaymentStartedEvent(
+                            command.orderId(),
+                            Instant.now()
+                    )
+            );
 
             if (Boolean.FALSE.equals(locked)) {
                 log.info("Заказ {} уже обрабатывается или обработан (Redis), пропускаем", command.orderId());
@@ -70,7 +79,9 @@ public class PaymentService {
                     new PaymentCompletedEvent(
                             command.orderId(),
                             transactionId,
-                            PaymentStatus.COMPLETED.name())
+                            PaymentStatus.COMPLETED.name(),
+                            Instant.now()
+                    )
             );
 
         } catch (DataIntegrityViolationException e) {
@@ -87,7 +98,11 @@ public class PaymentService {
             log.error("Ошибка обработки платежа для заказа {}", command.orderId(), ex);
 
             paymentProducer.sendPaymentFailedEvent(
-                    new PaymentFailedEvent(command.orderId(), ex.getMessage())
+                    new PaymentFailedEvent(
+                            command.orderId(),
+                            ex.getMessage(),
+                            Instant.now()
+                    )
             );
         }
     }

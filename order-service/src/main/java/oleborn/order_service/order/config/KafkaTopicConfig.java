@@ -12,20 +12,9 @@ public class KafkaTopicConfig {
     @Value("${app.topic.order-create-topic}")
     private String orderCreateTopic;
 
-    @Value("${app.topic.notification-events}")
-    private String notificationEventsTopic;
-
     @Bean
     public NewTopic orderCreatedTopic() {
         return TopicBuilder.name(orderCreateTopic)
-                .partitions(3)          //для демонстрации ребаланса
-                .replicas(1)            //у нас один брокер
-                .build();
-    }
-
-    @Bean
-    public NewTopic notificationEventsTopic() {
-        return TopicBuilder.name(notificationEventsTopic)
                 .partitions(3)          //для демонстрации ребаланса
                 .replicas(1)            //у нас один брокер
                 .build();
