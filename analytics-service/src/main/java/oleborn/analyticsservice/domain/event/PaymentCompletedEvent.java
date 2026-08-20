@@ -1,4 +1,4 @@
-package oleborn.paymentservice.domain.event;
+package oleborn.analyticsservice.domain.event;
 
 import java.time.Instant;
 

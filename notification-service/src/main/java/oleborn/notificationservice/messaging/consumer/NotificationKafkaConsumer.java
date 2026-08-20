@@ -1,8 +1,9 @@
-package oleborn.notificationservice.consumer;
+package oleborn.notificationservice.messaging.consumer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oleborn.notificationservice.event.NotificationEvent;
+import oleborn.notificationservice.service.NotificationService;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @RequiredArgsConstructor
 @RetryableTopic(
+        kafkaTemplate = "reliableKafkaTemplate",
         attempts = "3",
         backoff = @Backoff(delay = 1000, maxDelay = 10000, multiplier = 2.0, random = true),
         timeout = "60000",
@@ -40,40 +42,17 @@ import org.springframework.stereotype.Component;
 )
 public class NotificationKafkaConsumer {
 
+    private final NotificationService notificationService;
+
     @KafkaHandler
-    public void consumeResultProcessOrder(NotificationEvent event, Acknowledgment acknowledgment) {
+    public void consumeResultProcessOrder(
+            NotificationEvent event,
+            Acknowledgment acknowledgment
+    ) {
 
         try {
-            // Бизнес-валидация
-            if (event.orderId() == null) {
-                throw new IllegalArgumentException("orderId must not be null");
-            }
 
-            if (event.transactionId() != null) {
-                log.info(
-                        """
-                         Отправлено уведомление:
-                         Заказ: {}, успешно обработан.
-                         Статус заказа: {}
-                         Id транзакции: {}
-                         """,
-                        event.orderId(),
-                        event.status(),
-                        event.transactionId()
-                );
-            } else {
-                log.info(
-                        """
-                         Отправлено уведомление:
-                         Заказ: {}, не обработан.
-                         Статус заказа: {}
-                         Причина: {}
-                         """,
-                        event.orderId(),
-                        event.status(),
-                        event.reason()
-                );
-            }
+            notificationService.sendNotification(event);
 
             //Ручной коммит offset
             acknowledgment.acknowledge();

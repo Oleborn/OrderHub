@@ -411,6 +411,40 @@ services:
       - orderhub-network
 
   # ---------------------------------------------------------------------------
+  # ANALITICS Service - сервис аналитики
+  # ---------------------------------------------------------------------------
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: analytics-service/Dockerfile
+    container_name: analytics_service
+    ports:
+      - "${ANALITICS_SERVICE_PORT:-8090}:8090"   # Порт, на котором будет доступен сервис
+    environment:
+      SERVER_PORT: 8090
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
+      SPRING_PROFILES_ACTIVE: elk
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
+  # ---------------------------------------------------------------------------
   # Prometheus - сбор метрик
   # ---------------------------------------------------------------------------
   prometheus:

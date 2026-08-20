@@ -1,4 +1,4 @@
-package oleborn.paymentservice.config;
+package oleborn.notificationservice.config;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -23,10 +23,6 @@ public class KafkaProducerConfig {
     @Value("${app.kafka.retry.max-attempts:3}")
     private int retryMaxAttempts;
 
-    /**
-     * Базовая конфигурация для всех продюсеров.
-     * Включает надёжные настройки по умолчанию.
-     */
     private Map<String, Object> baseProducerConfigs() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -44,9 +40,8 @@ public class KafkaProducerConfig {
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 120000);
         props.put(JsonSerializer.TYPE_MAPPINGS,
                 """
-                paymentCompletedEvent:oleborn.paymentservice.domain.event.PaymentCompletedEvent,
-                paymentFailedEvent:oleborn.paymentservice.domain.event.PaymentFailedEvent,
-                paymentStartedEvent:oleborn.paymentservice.domain.event.PaymentStartedEvent
+                notificationEvent:oleborn.notificationservice.event.NotificationEvent,
+                notificationSentEvent:oleborn.notificationservice.event.NotificationSentEvent
                 """);
         return props;
     }
@@ -69,40 +64,5 @@ public class KafkaProducerConfig {
     @Bean
     public KafkaTemplate<String, Object> retryKafkaTemplate(ProducerFactory<String, Object> producerFactory) {
         return new KafkaTemplate<>(producerFactory);
-    }
-
-    // ===================== ТРАНЗАКЦИОННЫЙ ПРОДЮСЕР (exactly-once) =====================
-    @Bean
-    public ProducerFactory<String, Object> transactionalProducerFactory() {
-        Map<String, Object> props = baseProducerConfigs();
-        props.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "order-service-tx-producer");
-        // Идемпотентность уже true, но подчеркнём
-        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
-        DefaultKafkaProducerFactory<String, Object> factory = new DefaultKafkaProducerFactory<>(props);
-        factory.setTransactionIdPrefix("order-tx-");
-        return factory;
-    }
-
-    @Bean
-    public KafkaTemplate<String, Object> transactionalKafkaTemplate() {
-        return new KafkaTemplate<>(transactionalProducerFactory());
-    }
-
-    // ===================== ВЫСОКОПРОИЗВОДИТЕЛЬНЫЙ ПРОДЮСЕР (для сравнения) =====================
-    @Bean
-    public ProducerFactory<String, Object> highThroughputProducerFactory() {
-        Map<String, Object> props = baseProducerConfigs();
-        props.put(ProducerConfig.ACKS_CONFIG, "1");
-        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, false);
-        props.put(ProducerConfig.BATCH_SIZE_CONFIG, 65536);
-        props.put(ProducerConfig.LINGER_MS_CONFIG, 20);
-        props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 67108864);
-        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
-        return new DefaultKafkaProducerFactory<>(props);
-    }
-
-    @Bean
-    public KafkaTemplate<String, Object> highThroughputKafkaTemplate() {
-        return new KafkaTemplate<>(highThroughputProducerFactory());
     }
 }

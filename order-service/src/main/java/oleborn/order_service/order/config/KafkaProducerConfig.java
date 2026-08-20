@@ -47,7 +47,7 @@ public class KafkaProducerConfig {
         props.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 120000);
         props.put(JsonSerializer.TYPE_MAPPINGS,
                 """
-                order:com.producer.event.OrderCreatedEvent
+                notificationEvent:oleborn.order_service.order.domain.event.NotificationEvent
                 """);
         return props;
     }

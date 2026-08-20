@@ -114,6 +114,8 @@ processors:
                 container.name: "payment-service"
             - equals:
                 container.name: "bpm-service"
+            - equals:
+                container.name: "analytics-service"
       # Условие: оставляем только события от указанных контейнеров.
       #
       # Другие возможные условия (все реально работают):

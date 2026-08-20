@@ -65,10 +65,10 @@ public class PaymentConsumer {
         // 3. Выполняем оплату (имитация бизнес-логики)
         paymentService.processPayment(command);
 
-        throw new RuntimeException("Неожиданное прерывание приложения!");
+//        throw new RuntimeException("Неожиданное прерывание приложения!");
 
         // 4. Подтверждаем offset
-        //acknowledgment.acknowledge();
+        acknowledgment.acknowledge();
     }
 
     @KafkaHandler(isDefault = true)

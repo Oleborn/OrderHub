@@ -70,7 +70,8 @@ public class KafkaConsumerConfig {
         props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
 
         props.put(JsonDeserializer.TYPE_MAPPINGS,
-                """ 
+                """
+                OrderCreatedEvent:oleborn.order_service.order.domain.event.OrderCreatedEvent,
                 cancelOrderCommand:oleborn.order_service.order.domain.command.CancelOrderCommand,
                 updateOrderStatusCommand:oleborn.order_service.order.domain.command.UpdateOrderStatusCommand
                 """);
