@@ -199,7 +199,7 @@ resilience4j:
   timelimiter:
     instances:
       paymentService:           # имя экземпляра TimeLimiter
-        timeoutDuration: 2000ms  # ограничение времени выполнения (500 миллисекунд)
+        timeoutDuration: 5000ms  # ограничение времени выполнения (500 миллисекунд)
         cancelRunningFuture: true  # пытаться прервать асинхронную операцию при таймауте
 
   bulkhead:
@@ -212,7 +212,7 @@ resilience4j:
     instances:
       paymentService:                    # имя сервиса
         baseConfig: default              # наследовать настройки из default
-        maxConcurrentCalls: 5            # только 5 одновременных вызовов к платежам
+        maxConcurrentCalls: 100            # только 5 одновременных вызовов к платежам
         maxWaitDuration: 0               # не ждать, сразу отказ
 
 debezium:

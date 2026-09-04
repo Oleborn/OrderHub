@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: V1__create_notification_sent.sql
+      author: orderhub
+      sqlFile:
+          path: db/changelog/changes/V1__create_notification_sent.sql
+          relativeToChangeFile: true
+          splitStatements: true
+          endDelimiter: ;

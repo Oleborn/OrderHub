@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: provider-service
+  profiles:
+    active: elk
+
+server:
+  port: 8198
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN
+    oleborn.reactivetificationservice: DEBUG
+

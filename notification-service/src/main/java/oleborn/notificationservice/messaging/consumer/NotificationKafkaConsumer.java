@@ -3,6 +3,7 @@ package oleborn.notificationservice.messaging.consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oleborn.notificationservice.event.NotificationEvent;
+import oleborn.notificationservice.event.OrderCreatedEvent;
 import oleborn.notificationservice.service.NotificationService;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -62,6 +63,21 @@ public class NotificationKafkaConsumer {
             log.error("Error processing order", e);
             // Не вызываем acknowledgment – сообщение попадёт в DLT после всех retry
             throw new RuntimeException("Processing failed", e);
+        }
+    }
+
+    @KafkaListener(
+            topics = "${app.topic.order-create-topic}",
+            groupId = "notification-service-group"
+    )
+    public void handleOrderCreated(OrderCreatedEvent event, Acknowledgment acknowledgment) {
+        try {
+            notificationService.sendOrderCreatedNotification(event);
+            acknowledgment.acknowledge();
+            log.info("Уведомление о создании заказа {} обработано", event.orderId());
+        } catch (Exception e) {
+            log.error("Ошибка обработки уведомления о создании заказа {}", event.orderId(), e);
+            throw new RuntimeException(e);
         }
     }
 }

@@ -36,7 +36,7 @@ public class OrderEventConsumer {
             variables.put("orderId", event.orderId());
             variables.put("timestamp", event.timestamp());
             variables.put("context", event.context());
-            variables.put("timeoutDuration", "PT30S");
+            variables.put("timeoutDuration", "PT1200S"); //SLA 20 минут потом в отмену
             variables.put("traceparent", traceparent);
 
             runtimeService.startProcessInstanceByKey("create-order-saga", variables);

@@ -445,6 +445,63 @@ services:
       - orderhub-network
 
   # ---------------------------------------------------------------------------
+  # Reactive Notification Service - сервис реактивного стека для уведомлений
+  # ---------------------------------------------------------------------------
+
+  reactive-notification-service:
+    build:
+      context: .
+      dockerfile: reactive-notification-service/Dockerfile
+    container_name: reactive-notification-service
+    ports:
+      - "${REACTIVE_NOTIFICATION_SERVICE_PORT:-8199}:8199"
+    environment:
+      SERVER_PORT: 8199
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_R2DBC_USERNAME: ${POSTGRES_USER}
+      SPRING_R2DBC_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PROVIDER_URL: http://provider-service:8198/api/mock-provider   # имитация внешнего провайдера
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
+      SPRING_PROFILES_ACTIVE: elk
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
+  # ---------------------------------------------------------------------------
+  # Provider Service - имитация обработчика уведомлений
+  # ---------------------------------------------------------------------------
+  provider-service:
+    build:
+      context: .
+      dockerfile: provider-service/Dockerfile
+    container_name: provider-service
+    ports:
+      - "${PROVIDER_SERVICE_PORT:-8198}:8198"
+    environment:
+      SERVER_PORT: 8198
+      MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
+      SPRING_PROFILES_ACTIVE: elk
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - orderhub-network
+
+  # ---------------------------------------------------------------------------
   # Prometheus - сбор метрик
   # ---------------------------------------------------------------------------
   prometheus:

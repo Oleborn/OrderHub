@@ -18,28 +18,6 @@ spring:
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
-#      Можно указать как вариант прямую сериализацию, но тогда если в топик придут иные сообщения все сломается
-#      properties:
-#        spring.json.use.type.headers: false
-#        spring.json.value.default.type: oleborn.notificationservice.event.OrderCreatedEvent
-
-      # SSL / TLS НАСТРОЙКИ ДЛЯ PRODUCTION
-      # Для production-окружения Kafka обычно требует шифрования (SSL/TLS) и, возможно, взаимной аутентификации (mTLS).
-      # Все чувствительные данные (пароли, пути) должны выноситься в переменные окружения (например, ${KAFKA_KEYSTORE_PASSWORD}).
-      # Эти настройки необходимо добавить в секцию properties (на том же уровне, что и другие свойства Kafka).
-      # properties:
-      #   security.protocol: SSL                                  - включает шифрование; не путать с SASL_SSL
-      #   ssl.keystore.location: ${KAFKA_KEYSTORE_LOCATION}       - путь к JKS/PKCS12-файлу с ключом клиента
-      #   ssl.keystore.password: ${KAFKA_KEYSTORE_PASSWORD}       - пароль от хранилища ключей
-      #   ssl.key.password: ${KAFKA_KEY_PASSWORD}                 - пароль от самого ключа (часто совпадает с keystore)
-      #   ssl.truststore.location: ${KAFKA_TRUSTSTORE_LOCATION}   - путь к хранилищу доверенных сертификатов (CA)
-      #   ssl.truststore.password: ${KAFKA_TRUSTSTORE_PASSWORD}   - пароль от truststore
-      #   ssl.endpoint.identification.algorithm: ""               - отключает проверку имени узла (не для прода) для строгой проверки используйте "HTTPS"
-      #
-      #️ВНИМАНИЕ: при использовании SSL необходимо, чтобы брокер Kafka был
-      #настроен на приём SSL-соединений (порт 9093 обычно, а не 9092).
-      #Адрес брокера должен соответствовать: localhost:9093.
-      #Также потребуется добавить SSL-настройки в Producer, если он отправляет сообщения.
 
     listener:
       simple:
@@ -58,6 +36,9 @@ spring:
 app:
   topic:
     notification-events: "notification-events"
+    order-create-topic: "order.outbox"
+  provider:
+    url: http://provider-service:8198/api/mock-provider
 
 server:
   port: 8082
@@ -81,38 +62,12 @@ management:
           - info
           - prometheus
           - loggers
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 logging:
   level:
     org.apache.kafka: WARN
     org.springframework.kafka: WARN
-
-#logging:
-#  # Блок настройки структурированного (JSON) логирования
-#  structured:
-#    # Формат вывода логов
-#    format:
-#      # console – указывает, что формат применяется к выводу в консоль (stdout)
-#      console: logstash  # Возможные значения: ecs, logstash, gelf
-#        # - ecs      : Elastic Common Schema – современный стандарт Elastic,
-#        #               поля называются по ECS-спецификации (trace.id, service.name и т.д.)
-#        #               Лучшая совместимость с Kibana и Elasticsearch.
-#        # - logstash : классический Logstash JSON (поля @timestamp, @version, message, ...)
-#        #               Аналогичен тому, что выдаёт logstash-logback-encoder.
-#        # - gelf     : Graylog Extended Log Format – для систем на Graylog.
-#        # Можно также указать отдельно для console и file:
-#        #   console: ecs
-#      #   file: logstash  # в файл пишем в другом формате
-#
-#    # Настройки для JSON-формата (применимы, если выбран один из JSON-форматов)
-#    json:
-#      # Настройка отображения стектрейсов (исключений) в JSON
-#      stacktrace:
-#        # Максимальная длина всего стектрейса в символах (включая сообщения и фреймы).
-#        # Если стектрейс длиннее – он будет обрезан.
-#        # Полезно для ограничения размера лога.
-#        max-length: 2048   # Можно указать 1024, 4096, 65536 и т.д.
-#
-#        # Максимальная глубина вложенности исключений (сколько cause-цепочек показывать).
-#        # Предотвращает бесконечные рекурсии и слишком глубокие стеки.
-#        max-throwable-depth: 30   # Обычно 20-30 достаточно для большинства приложений.

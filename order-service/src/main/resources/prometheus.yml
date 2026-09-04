@@ -79,9 +79,26 @@ scrape_configs:
           application: 'analytics-service'   # Имя приложения (для фильтрации)
           environment: 'production'             # Окружение (prod/staging/dev)
 
+  - job_name: 'provider-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'provider-service:8198' ]
+        labels:
+          application: 'provider-service'   # Имя приложения (для фильтрации)
+          environment: 'production'             # Окружение (prod/staging/dev)
+
+  - job_name: 'reactive-notification-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'reactive-notification-service:8199' ]
+        labels:
+          application: 'reactive-notification-service'   # Имя приложения (для фильтрации)
+          environment: 'production'             # Окружение (prod/staging/dev)
+
   - job_name: 'elasticsearch'
     static_configs:
       - targets: [ 'elasticsearch-exporter:9114' ]
         labels:
           service: 'elasticsearch'
           stack: 'elk'
+
