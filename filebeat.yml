@@ -116,6 +116,10 @@ processors:
                 container.name: "bpm-service"
             - equals:
                 container.name: "analytics-service"
+            - equals:
+                container.name: "provider-service"
+            - equals:
+                container.name: "reactive-notification-service"
       # Условие: оставляем только события от указанных контейнеров.
       #
       # Другие возможные условия (все реально работают):

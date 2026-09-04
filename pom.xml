@@ -31,6 +31,7 @@
         <module>payment-service</module>
         <module>bpm-service</module>
         <module>analytics-service</module>
+        <module>reactive-notification-service</module>
     </modules>
 
     <dependencyManagement>

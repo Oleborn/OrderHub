@@ -54,7 +54,8 @@ public class KafkaConsumerConfig {
 
         props.put(JsonDeserializer.TYPE_MAPPINGS,
                 """
-                notificationEvent:oleborn.notificationservice.event.NotificationEvent
+                notificationEvent:oleborn.notificationservice.event.NotificationEvent,
+                OrderCreatedEvent:oleborn.notificationservice.event.OrderCreatedEvent
                 """);
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "oleborn.notificationservice.event");
 
@@ -80,6 +81,9 @@ public class KafkaConsumerConfig {
 
         // Здесь также можно задать обработчик ошибок (DefaultErrorHandler),
         // фильтры и другие параметры.
+
+        // Включаем observability через ContainerProperties
+        factory.getContainerProperties().setObservationEnabled(true);
 
         return factory;
     }

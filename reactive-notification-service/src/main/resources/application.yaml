@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: reactive-notification-service
+  profiles:
+    active: elk
+
+  r2dbc:
+    url: r2dbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    pool:
+      initial-size: 5
+      max-size: 10
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  liquibase:
+    enabled: true
+    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    change-log: classpath:/db/changelog/changelog_master.yaml
+
+app:
+  notification:
+    retry:
+      max-attempts: 3
+      backoff-min: 1s
+      backoff-max: 10s
+  topic:
+    order-created: "order.outbox"
+  provider:
+    url: ${PROVIDER_URL}
+    rate-limit: 100   # RPS
+
+server:
+  port: 8199
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    org.apache.kafka: ERROR
+    org.springframework.kafka: ERROR
+
